@@ -65,6 +65,12 @@ def generateRandomPlus(cell_size, color_generators):
   ''' Generate plus in the desired grid_cell '''
   pass
 
+def generateAntiAliasedRandomEllipse(cell_size):
+  ''' Generate anti aliased ellipse in the desired grid_cell '''
+  large_img = generateRandomEllipse(4*cell_size)
+  cell_img = skimage.transform.resize(large_img,(cell_size,cell_size))
+  return cell_img
+
 def generateRandomEllipse(cell_size, color):
   ''' Generate ellipse in the desired grid_cell '''
   default_radius = cell_size / 3
@@ -94,17 +100,20 @@ def generateRandomEllipse(cell_size, color):
 # TODO: This should generate a random shade of red
 def generateRandomRed():
   ''' Generates a random shade of red '''
-  return 'red', np.array([1., 0., 0.])
+  color = np.clip(np.array([1., 0., 0.]) + npr.normal(0, .15, 3), 0, 1)
+  return 'red', color
 
 # TODO: This should generate a random shade of green
 def generateRandomGreen():
   ''' Generates a random shade of green '''
-  return 'green', np.array([0., 1., 0.])
+  color = np.clip(np.array([0., 1., 0.]) + npr.normal(0, .15, 3), 0, 1)
+  return 'green', color
 
 # TODO: This should generate a random shade of blue
 def generateRandomBlue():
   ''' Generates a random shade of blue '''
-  return 'blue', np.array([0., 0., 1.])
+  color = np.clip(np.array([0., 0., 1.]) + npr.normal(0, .15, 3), 0, 1)
+  return 'blue', color
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
