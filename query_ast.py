@@ -42,14 +42,14 @@ class UnaryOp(object):
     self.value = value
 
 class Is(UnaryOp):
-   def eval(self, sample):
-    pass
+  def eval(self, sample):
+    return np.any(self.value.eval(sample))
 
   def query(self):
     return 'Is {}'.format(self.value.query())
 
 class Count(UnaryOp):
-   def eval(self, sample):
+  def eval(self, sample):
     pass
 
   def query(self):
@@ -66,21 +66,24 @@ class BinaryOp(object):
 
 class And(BinaryOp):
   def eval(self, sample):
-    return np.logical_and(self.left.eval(), self.right.eval())
+    return np.logical_and(self.left.eval(sample), self.right.eval(sample))
 
   def query(self):
     return '{} and {}'.format(self.left.query(), self.right.query())
 
 class Or(BinaryOp):
   def eval(self, sample):
-    return np.logical_or(self.left.eval(), self.right.eval())
+    return np.logical_or(self.left.eval(sample), self.right.eval(sample))
 
   def query(self):
     return '{} or {}'.format(self.left.query(), self.right.query())
 
 class Above(BinaryOp):
   def eval(self, sample):
-    return
+    key = self.right.eval(sample)
+    push_key = np.vstack((key[1:], np.zeros((key.shape[1]))))
+    push_key = np.logical_or.accumulate(push_key[::-1])[::-1]
+    return np.logical_and(self.left.eval(sample), push_key)
 
   def query(self):
     return '{} above {}'.format(self.left.query(), self.right.query())
