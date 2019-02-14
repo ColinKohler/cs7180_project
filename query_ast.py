@@ -15,45 +15,46 @@ BLUE_PLUS = 6
 PROPERTY_QUERIES = {1 : 'red ellipse', 2 : 'green ellipse', 3 : 'blue ellipse',
                     4 : 'red plus',    5 : 'green plus',    6 : 'blue plus'}
 
-class Property(object):
-  def __init__(self, value):
-    self.value = value
-
-  def eval(self, sample):
-    return sample == self.value
-
-  def query(self):
-    return PROPERTY_QUERIES[self.value]
 
 #=============================================================================#
 #                               Nullary Ops                                   #
 #=============================================================================#
+# Have no inputs, but do have values.
 
 class NullaryOp(object):
-  def __init__(self):
-    pass
+  def __init__(self, value):
+    self.value = value
+
+class Property(NullaryOp):
+  def eval(self, sample):
+    return sample == self.value  
+
+  def query(self):
+    return PROPERTY_QUERIES[self.value]
+
 
 #=============================================================================#
 #                                 Unary Ops                                   #
 #=============================================================================#
+# Has one input.
 
 class UnaryOp(object):
-  def __init__(self, value):
-    self.value = value
-
+  def __init__(self, input):
+    self.input = input
+	
 class Is(UnaryOp):
    def eval(self, sample):
     pass
 
   def query(self):
-    return 'Is {}'.format(self.value.query())
+    return 'Is {}'.format(self.input.query())
 
 class Count(UnaryOp):
    def eval(self, sample):
     pass
 
   def query(self):
-    return 'Count {}'.format(self.value.query())
+    return 'Count {}'.format(self.input.query())
 
 #=============================================================================#
 #                                 Binary Ops                                  #
