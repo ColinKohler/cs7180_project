@@ -16,6 +16,13 @@ def main(args):
   num_cells = args.grid_size**2
   pixel_cell_size = int(args.sample_size / args.grid_size)
 
+  # Generation junk
+  shape_generators = {'ellipse': generateRandomEllipse, 'plus': generateRandomPlus}
+  shapes_str = shape_generators.keys()
+  colors_str = getColorsStr()
+  # TODO: question_parts is a bad name
+  question_parts = list()
+
   for i in range(args.num_samples):
     # Generate sample grid
     sample = np.zeros((args.sample_size, args.sample_size, 3))
@@ -32,8 +39,6 @@ def main(args):
         continue
 
       # Generate random shape of a random color
-      shape_generators = {'ellipse': generateRandomEllipse, 'plus': generateRandomPlus}
-
       color_str, color_rgb = generateRandomColor()
       shape_str, shape_generator = random.choice(list(shape_generators.items()))
       if args.aa:
@@ -47,7 +52,8 @@ def main(args):
       string_grid[cell_idx[1], cell_idx[0]] = '{}_{}'.format(color_str, shape_str)
 
     # Generate and compare query to sample to get label
-    query = generateQuery(string_grid)
+    # TODO: question_parts is a bad name
+    query = generateQuery(question_parts, colors_str, shapes_str)
     label = getLabel(string_grid, query)
 
     # Add sample to dataset
@@ -63,10 +69,20 @@ def main(args):
     np.save('./datasets/simple_shapes/queries.npy', queries)
     np.save('./datasets/simple_shapes/labels.npy', labels)
 
-def generateQuery(grid):
+# TODO: question_parts is a bad name
+def generateQuery(question_parts, colors, shapes):
+  ''' Generate query by combining all possible query parts '''
+  # Add empty string to colors and shapes
+  colors.extend('')
+  shapes.extend('')
+
+  # Generate queries somehow...
+
   return None
 
-def getLabel(sample, query):
+def getLabel(str_sample, query):
+  ''' Parse query and use str_sample to determine label '''
+
   return None
 
 def generateAntiAliasedShape(shape_generator, cell_size, color):
@@ -128,12 +144,20 @@ def generateRandomEllipse(cell_size, color):
   return cell_img
 
 def generateRandomColor(noise_mean=0.15, noise_var=3):
-  ''' Generates a random color'''
-  colors = {'red': np.array([1., 0., 0.]), 'green': np.array([0., 1., 0.]),
-            'blue': np.array([0., 0., 1.0])}
+  ''' Generates a random color '''
+  colors = getColorsDict()
   color_key, color = random.choice(list(colors.items()))
   color = np.clip(color + npr.normal(0, noise_mean, noise_var), 0, 1)
   return color_key, color
+
+def getColorsStr():
+  ''' Gets the strings of all the colors we currently use '''
+  return getColorsDict().keys()
+
+def getColorsDict():
+  ''' Gets the dictonary of all the colors we currently use '''
+  return {'red': np.array([1., 0., 0.]), 'green': np.array([0., 1., 0.]),
+          'blue': np.array([0., 0., 1.0])}
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
