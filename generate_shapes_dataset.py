@@ -72,7 +72,8 @@ def getLabel(sample, query):
 def generateAntiAliasedShape(shape_generator, cell_size, color):
   ''' Generate anti aliased ellipse in the desired grid_cell '''
   large_img = shape_generator(4*cell_size, color)
-  return skimage.transform.resize(large_img, (cell_size,cell_size), mode='constant', anti_aliasing=True)
+  return skimage.transform.resize(large_img, (cell_size,cell_size),
+                                  mode='constant', anti_aliasing=True)
 
 def generateRandomPlus(cell_size, color):
   ''' Generate plus in the desired grid_cell '''
