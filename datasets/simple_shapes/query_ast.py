@@ -92,36 +92,74 @@ class Or(BinaryOp):
   def query(self):
     return '{} or {}'.format(self.left.query(), self.right.query())
 
-class Above(BinaryOp):
+class RelDir(BinaryOp):
+  def __init__(self, left, right, dirVec, name):
+    BinaryOp.__init__(self,left,right)
+    self.dirname = name
+    self.dx, self.dy = dirVec
+    self.axis = 1
+    self.rev = lambda arr : arr
+    if self.dy != 0:
+      self.axis = 0
+    if (self.dx < 0) or (self.dy < 0):
+      self.rev = lambda arr : np.flip(arr, self.axis)
+
   def eval(self, sample):
     key = self.right.eval(sample)
-    push_key = np.vstack((key[1:], np.zeros((key.shape[1]))))
-    push_key = np.logical_or.accumulate(push_key[::-1])[::-1]
+    pad_key = np.pad(key, ((2,2),(2,2)), 'constant') 
+    push_key = pad_key[2-self.dy:-2-self.dy,2-self.dx:-2-self.dx]
+    push_key = self.rev(np.logical_or.accumulate(self.rev(push_key),self.axis))
     return np.logical_and(self.left.eval(sample), push_key)
 
   def query(self):
-    return '{} above {}'.format(self.left.query(), self.right.query())
+    return '{} {} {}'.format(self.left.query(), self.dirname, self.right.query())
 
-class Below(BinaryOp):
-  def eval(self, sample):
-    pass
+class Above(RelDir):
+  def __init__(self,left,right):
+    RelDir.__init__(self,left,right,(0,-1),"above")
 
-  def query(self):
-    return '{} below {}'.format(self.left.query(), self.right.query())
+class Below(RelDir):
+  def __init__(self,left,right):
+    RelDir.__init__(self,left,right,(0,1),"below")
+    
+class Left(RelDir):
+  def __init__(self,left,right):
+    RelDir.__init__(self,left,right,(-1,0),"left of")
 
-class Left(BinaryOp):
-  def eval(self, sample):
-    pass
+class Right(RelDir):
+  def __init__(self,left,right):
+    RelDir.__init__(self,left,right,(1,0),"right of")
+    
+#class Above(BinaryOp):
+#  def eval(self, sample):
+#    key = self.right.eval(sample)
+#    push_key = np.vstack((key[1:], np.zeros((key.shape[1]))))
+#    push_key = np.logical_or.accumulate(push_key[::-1])[::-1]
+#    return np.logical_and(self.left.eval(sample), push_key)
+#
+#  def query(self):
+#    return '{} above {}'.format(self.left.query(), self.right.query())
 
-  def query(self):
-    return '{} left {}'.format(self.left.query(), self.right.query())
+# class Below(BinaryOp):
+  # def eval(self, sample):
+    # pass
 
-class Right(BinaryOp):
-  def eval(self, sample):
-    pass
+  # def query(self):
+    # return '{} below {}'.format(self.left.query(), self.right.query())
 
-  def query(self):
-    return '{} right {}'.format(self.left.query(), self.right.query())
+# class Left(BinaryOp):
+  # def eval(self, sample):
+    # pass
+
+  # def query(self):
+    # return '{} left {}'.format(self.left.query(), self.right.query())
+
+# class Right(BinaryOp):
+  # def eval(self, sample):
+    # pass
+
+  # def query(self):
+    # return '{} right {}'.format(self.left.query(), self.right.query())
 
 class Near(BinaryOp):
   def eval(self, sample):
