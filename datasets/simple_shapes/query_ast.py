@@ -4,17 +4,16 @@ import numpy as np
 #                                 Base Types                                  #
 #=============================================================================#
 
-EMPTY = 0
-RED_ELLIPSE = 1
-GREEN_ELLIPSE = 2
-BLUE_ELLIPSE = 3
-RED_PLUS = 4
-GREEN_PLUS =  5
-BLUE_PLUS = 6
+NULL_PROP = 0
 
-PROPERTY_QUERIES = {1 : 'red ellipse', 2 : 'green ellipse', 3 : 'blue ellipse',
-                    4 : 'red plus',    5 : 'green plus',    6 : 'blue plus'}
+RED = 1
+GREEN = 2
+BLUE = 3
+COLOR_PROPERTY_STRS = {1 : 'red', 2 : 'green', 3 : 'blue'}
 
+ELLIPSE = 1
+PLUS = 2
+SHAPE_PROPERTY_STRS = {1 : 'ellipse', 2 : 'plus'}
 
 #=============================================================================#
 #                               Nullary Ops                                   #
@@ -25,13 +24,27 @@ class NullaryOp(object):
   def __init__(self, value):
     self.value = value
 
-class Property(NullaryOp):
+class Color(NullaryOp):
   def eval(self, sample):
-    return sample == self.value  
+    return sample == self.value
 
   def query(self):
-    return PROPERTY_QUERIES[self.value]
+    return COLOR_PROPERTY_STRS[self.value]
 
+class Shape(NullaryOp):
+  def eval(self, sample):
+    return sample == self.value
+
+  def query(self):
+    return SHAPE_PROPERTY_STRS[self.value]
+
+class Property(NullaryOp):
+  def eval(self, sample):
+    return np.logical_and(self.value[0].eval(sample[0]),
+                          self.value[1].eval(sample[1]))
+
+  def query(self):
+    return '{} {}'.format(self.value[0].query(), self.value[1].query())
 
 #=============================================================================#
 #                                 Unary Ops                                   #
@@ -41,10 +54,10 @@ class Property(NullaryOp):
 class UnaryOp(object):
   def __init__(self, input):
     self.input = input
-	
+
 class Is(UnaryOp):
   def eval(self, sample):
-    return np.any(self.value.eval(sample))
+    return np.any(self.input.eval(sample))
 
   def query(self):
     return 'Is {}'.format(self.input.query())
