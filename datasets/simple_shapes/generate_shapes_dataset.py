@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 import skimage
 import random
 
+import query_ast as q_ast
+
 def main(args):
   # Init empty dataset
   samples = np.empty((args.num_samples, args.sample_size, args.sample_size, 3))
@@ -18,10 +20,6 @@ def main(args):
 
   # Generation junk
   shape_generators = {'ellipse': generateRandomEllipse, 'plus': generateRandomPlus}
-  shapes_str = shape_generators.keys()
-  colors_str = getColorsStr()
-  # TODO: question_parts is a bad name
-  question_parts = list()
 
   for i in range(args.num_samples):
     # Generate sample grid
@@ -31,7 +29,7 @@ def main(args):
     shape_masks = npr.rand(num_cells) > 0.5
     cell_length = list(range(args.grid_size))
     cell_indexes = np.dstack(np.meshgrid(cell_length, cell_length)).reshape(-1, 2)
-    string_grid = np.empty((args.grid_size, args.grid_size), dtype=np.object)
+    ast_grid = np.zeros((2, args.grid_size, args.grid_size))
 
     for cell_idx, mask in zip(cell_indexes, shape_masks):
       # Check to see if we will generate a shape in this cell
@@ -46,20 +44,23 @@ def main(args):
       else:
         shape = shape_generator(pixel_cell_size, color_rgb)
 
-      # Append shape into cell and cell sting into string grid
+      # Append shape into cell and cell sting into ast grid
       sample[cell_idx[1]*pixel_cell_size:(cell_idx[1]+1)*pixel_cell_size,
              cell_idx[0]*pixel_cell_size:(cell_idx[0]+1)*pixel_cell_size:, :] = shape
-      string_grid[cell_idx[1], cell_idx[0]] = '{}_{}'.format(color_str, shape_str)
+      ast_grid[:, cell_idx[1], cell_idx[0]] = [q_ast.COLOR_PROPERTY_INTS[color_str],
+                                               q_ast.SHAPE_PROPERTY_INTS[shape_str]]
 
-    # Generate and compare query to sample to get label
-    # TODO: question_parts is a bad name
-    query = generateQuery(question_parts, colors_str, shapes_str)
-    label = getLabel(string_grid, query)
+    # Generate and compare query
+    query = generateQuery()
+    label = getLabel(ast_grid, query)
 
     # Add sample to dataset
     samples[i] = sample
+    queries.append(query.query())
+    labels[i] = label
 
     if args.debug:
+      plt.title('{}: {}'.format(query.query(), label))
       plt.imshow(sample)
       plt.show()
 
@@ -70,20 +71,20 @@ def main(args):
     np.save('./datasets/simple_shapes/labels.npy', labels)
 
 # TODO: question_parts is a bad name
-def generateQuery(question_parts, colors, shapes):
+def generateQuery():
   ''' Generate query by combining all possible query parts '''
-  # Add empty string to colors and shapes
-  colors.extend('')
-  shapes.extend('')
+  if npr.rand() > 0.5:
+    prop_1 = q_ast.generateRandomProperty()
+    prop_2 = q_ast.generateRandomProperty()
+    query = q_ast.Is(q_ast.generateRandomRelational(prop_1, prop_2))
+  else:
+    query = q_ast.Is(q_ast.generateRandomProperty())
 
-  # Generate queries somehow...
-
-  return None
+  return query
 
 def getLabel(str_sample, query):
   ''' Parse query and use str_sample to determine label '''
-
-  return None
+  return query.eval(str_sample)
 
 def generateAntiAliasedShape(shape_generator, cell_size, color):
   ''' Generate anti aliased ellipse in the desired grid_cell '''

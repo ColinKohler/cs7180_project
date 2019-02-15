@@ -1,4 +1,5 @@
 import numpy as np
+import numpy.random as npr
 
 #=============================================================================#
 #                                 Base Types                                  #
@@ -9,11 +10,13 @@ NULL_PROP = 0
 RED = 1
 GREEN = 2
 BLUE = 3
-COLOR_PROPERTY_STRS = {1 : 'red', 2 : 'green', 3 : 'blue'}
+COLOR_PROPERTY_STRS = {RED : 'red', GREEN : 'green', BLUE : 'blue'}
+COLOR_PROPERTY_INTS = {'red': RED, 'green': GREEN, 'blue': BLUE}
 
 ELLIPSE = 1
 PLUS = 2
-SHAPE_PROPERTY_STRS = {1 : 'ellipse', 2 : 'plus'}
+SHAPE_PROPERTY_STRS = {ELLIPSE : 'ellipse', PLUS : 'plus'}
+SHAPE_PROPERTY_INTS = {'ellipse': ELLIPSE, 'plus': PLUS}
 
 #=============================================================================#
 #                               Nullary Ops                                   #
@@ -137,3 +140,15 @@ class Near(BinaryOp):
   def query(self):
     return '{} near {}'.format(self.left.query(), self.right.query())
 
+#=============================================================================#
+#                                 Helpers                                     #
+#=============================================================================#
+def generateRandomProperty():
+  color = Color(npr.choice(list(COLOR_PROPERTY_INTS.values())))
+  shape = Shape(npr.choice(list(SHAPE_PROPERTY_INTS.values())))
+
+  return Property([color, shape])
+
+def generateRandomRelational(prop_1, prop_2):
+  relational = npr.choice([Above, Below, Left, Right])
+  return relational(prop_1, prop_2)

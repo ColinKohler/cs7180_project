@@ -24,6 +24,10 @@ class TestQueryAST(unittest.TestCase):
     self.green_plus = Property([Color(GREEN), Shape(PLUS)])
     self.blue_plus = Property([Color(BLUE), Shape(PLUS)])
 
+    # Is queries
+    self.is_red_ellipse = Is(self.red_ellipse)
+    self.is_green_plus = Is(self.green_plus)
+
     # Above queries
     self.red_ellipse_above_blue_plus = Is(Above(self.red_ellipse, self.blue_plus))
     self.green_ellipse_above_red_ellipse = Is(Above(self.green_ellipse, self.red_ellipse))
@@ -43,6 +47,16 @@ class TestQueryAST(unittest.TestCase):
     # Define some sample samples
     self.sample_1 = np.stack((np.array([[RED, GREEN], [BLUE, NULL_PROP]]),
                               np.array([[ELLIPSE, ELLIPSE], [PLUS, NULL_PROP]])))
+
+  def testIsPropertyQuery(self):
+    self.assertEqual(self.is_red_ellipse.query(),
+                     'Is red ellipse')
+    self.assertEqual(self.is_green_plus.query(),
+                     'Is green plus')
+
+  def testIsPropertyEval(self):
+    self.assertEqual(self.is_red_ellipse.eval(self.sample_1), True)
+    self.assertEqual(self.is_green_plus.eval(self.sample_1), False)
 
   def testIsAboveQuery(self):
     self.assertEqual(self.red_ellipse_above_blue_plus.query(),
