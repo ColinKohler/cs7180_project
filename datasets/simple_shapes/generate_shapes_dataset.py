@@ -5,6 +5,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import skimage
 import random
+import tqdm
 
 import query_ast as q_ast
 
@@ -21,7 +22,7 @@ def main(args):
   # Generation junk
   shape_generators = {'ellipse': generateRandomEllipse, 'plus': generateRandomPlus}
 
-  for i in range(args.num_samples):
+  for i in tqdm.trange(args.num_samples):
     # Generate sample grid
     sample = np.zeros((args.sample_size, args.sample_size, 3))
 
@@ -66,11 +67,10 @@ def main(args):
 
   # Save dataset
   if not args.debug:
-    np.save('./datasets/simple_shapes/samples.npy', samples)
-    np.save('./datasets/simple_shapes/queries.npy', queries)
-    np.save('./datasets/simple_shapes/labels.npy', labels)
+    np.save('./samples.npy', samples)
+    np.save('./queries.npy', queries)
+    np.save('./labels.npy', labels)
 
-# TODO: question_parts is a bad name
 def generateQuery():
   ''' Generate query by combining all possible query parts '''
   if npr.rand() > 0.5:
