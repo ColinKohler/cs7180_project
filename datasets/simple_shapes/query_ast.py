@@ -21,30 +21,35 @@ SHAPE_PROPERTY_INTS = {'ellipse': ELLIPSE, 'plus': PLUS}
 #=============================================================================#
 #                               Nullary Ops                                   #
 #=============================================================================#
-# Have no inputs, but do have values.
+# Have no inputs, but do have values.  
+# Examples:
+#   x = Property([Color(RED),Shape(ELLIPSE)])
+#   y = Color(RED)
+#   z = Property([Color(RED)])
+#  
 
 class NullaryOp(object):
   def __init__(self, value):
-    self.value = value
+    self.value = value 
 
 class Color(NullaryOp):
   def eval(self, sample):
-    return sample == self.value
+    return sample[0] == self.value
 
   def query(self):
     return COLOR_PROPERTY_STRS[self.value]
 
 class Shape(NullaryOp):
   def eval(self, sample):
-    return sample == self.value
+    return sample[1] == self.value
 
   def query(self):
     return SHAPE_PROPERTY_STRS[self.value]
 
-class Property(NullaryOp):
+class Property(NullaryOp):  #Value is assumed to be a list.
   def eval(self, sample):
-    return np.logical_and(self.value[0].eval(sample[0]),
-                          self.value[1].eval(sample[1]))
+    stack = np.stack([property.eval(sample) for property in self.value])
+    return np.logical_and.reduce(stack)
 
   def query(self):
     return '{} {}'.format(self.value[0].query(), self.value[1].query())
@@ -67,7 +72,7 @@ class Is(UnaryOp):
 
 class Count(UnaryOp):
   def eval(self, sample):
-    pass
+    return np.sum(self.input.eval(sample))
 
   def query(self):
     return 'Count {}'.format(self.input.query())

@@ -23,6 +23,13 @@ class TestQueryAST(unittest.TestCase):
     self.red_plus = Property([Color(RED), Shape(PLUS)])
     self.green_plus = Property([Color(GREEN), Shape(PLUS)])
     self.blue_plus = Property([Color(BLUE), Shape(PLUS)])
+    
+    self.red = Color(RED)
+    self.blue = Color(BLUE)
+    self.green = Color(GREEN)
+    
+    self.ellipse = Shape(ELLIPSE)
+    self.plus = Shape(PLUS)
 
     # Is queries
     self.is_red_ellipse = Is(self.red_ellipse)
@@ -31,7 +38,9 @@ class TestQueryAST(unittest.TestCase):
     # Above queries
     self.red_ellipse_above_blue_plus = Is(Above(self.red_ellipse, self.blue_plus))
     self.green_ellipse_above_red_ellipse = Is(Above(self.green_ellipse, self.red_ellipse))
-
+    self.ellipse_above_plus = Above(self.ellipse, self.plus)
+    self.green_above_blue = Above(self.green, self.blue)
+    
     # Below queries
     self.blue_plus_below_red_ellipse = Is(Below(self.blue_plus, self.red_ellipse))
     self.green_ellipse_below_red_ellipse = Is(Below(self.green_ellipse, self.red_ellipse))
@@ -44,9 +53,18 @@ class TestQueryAST(unittest.TestCase):
     self.green_ellipse_right_red_ellipse = Is(Right(self.green_ellipse, self.red_ellipse))
     self.green_ellipse_right_blue_ellipse = Is(Right(self.green_ellipse, self.blue_ellipse))
 
+    # Count queries
+    self.count_blue = Count(self.blue)
+    self.count_ellipse = Count(self.ellipse)
+    self.count_red_ellipse_above_blue_plus = Count(self.red_ellipse_above_blue_plus)
+    self.count_ellipse_above_plus = Count(self.ellipse_above_plus)
+    self.count_green_above_blue = Count(self.green_above_blue)
+
     # Define some sample samples
     self.sample_1 = np.stack((np.array([[RED, GREEN], [BLUE, NULL_PROP]]),
                               np.array([[ELLIPSE, ELLIPSE], [PLUS, NULL_PROP]])))
+    self.sample_2 = np.stack((np.array([[RED, GREEN], [BLUE, BLUE]]),
+                              np.array([[ELLIPSE, ELLIPSE], [PLUS, PLUS]])))                          
 
   def testIsPropertyQuery(self):
     self.assertEqual(self.is_red_ellipse.query(),
@@ -73,10 +91,6 @@ class TestQueryAST(unittest.TestCase):
                      'Is blue plus below red ellipse')
     self.assertEqual(self.green_ellipse_below_red_ellipse.query(),
                      'Is green ellipse below red ellipse')
-
-    # Define some sample samples
-    self.sample_1 = np.stack((np.array([[RED, GREEN], [BLUE, NULL_PROP]]),
-                              np.array([[ELLIPSE, ELLIPSE], [PLUS, NULL_PROP]])))
 
   def testIsAboveQuery(self):
     self.assertEqual(self.red_ellipse_above_blue_plus.query(),
@@ -118,6 +132,14 @@ class TestQueryAST(unittest.TestCase):
     self.assertEqual(self.green_ellipse_right_red_ellipse.eval(self.sample_1), True)
     self.assertEqual(self.green_ellipse_right_blue_ellipse.eval(self.sample_1), False)
 
+  def testCountEval(self):
+    self.assertEqual(self.count_blue.eval(self.sample_2), 2)
+    self.assertEqual(self.count_ellipse.eval(self.sample_2), 2)
+  
+  def testCountAboveEval(self):
+    self.assertEqual(self.count_red_ellipse_above_blue_plus.eval(self.sample_2),1)
+    self.assertEqual(self.count_ellipse_above_plus.eval(self.sample_2),2)
+    self.assertEqual(self.count_green_above_blue.eval(self.sample_2),1)
 
 if __name__ == '__main__':
   unittest.main()
