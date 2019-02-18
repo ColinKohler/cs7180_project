@@ -60,11 +60,18 @@ class TestQueryAST(unittest.TestCase):
     self.count_ellipse_above_plus = Count(self.ellipse_above_plus)
     self.count_green_above_blue = Count(self.green_above_blue)
 
+    # Near queries
+    self.is_red_near_blue = Is(Near(Color(RED),Color(BLUE)))
+
     # Define some sample samples
     self.sample_1 = np.stack((np.array([[RED, GREEN], [BLUE, NULL_PROP]]),
                               np.array([[ELLIPSE, ELLIPSE], [PLUS, NULL_PROP]])))
     self.sample_2 = np.stack((np.array([[RED, GREEN], [BLUE, BLUE]]),
-                              np.array([[ELLIPSE, ELLIPSE], [PLUS, PLUS]])))                          
+                              np.array([[ELLIPSE, ELLIPSE], [PLUS, PLUS]])))
+    self.sample_3 = np.stack((np.array([[RED, NULL_PROP, NULL_PROP], [NULL_PROP, NULL_PROP, NULL_PROP], [NULL_PROP, NULL_PROP, BLUE]]),
+                              np.array([[ELLIPSE, NULL_PROP, NULL_PROP], [NULL_PROP, NULL_PROP, NULL_PROP], [NULL_PROP, NULL_PROP, ELLIPSE]])))
+    self.sample_4 = np.stack((np.array([[RED, NULL_PROP, NULL_PROP], [NULL_PROP, BLUE, NULL_PROP], [NULL_PROP, NULL_PROP, NULL_PROP ]]),
+                              np.array([[ELLIPSE, NULL_PROP, NULL_PROP], [NULL_PROP, ELLIPSE, NULL_PROP], [NULL_PROP, NULL_PROP, NULL_PROP]])))                              
 
   def testIsPropertyQuery(self):
     self.assertEqual(self.is_red_ellipse.query(),
@@ -140,6 +147,10 @@ class TestQueryAST(unittest.TestCase):
     self.assertEqual(self.count_red_ellipse_above_blue_plus.eval(self.sample_2),1)
     self.assertEqual(self.count_ellipse_above_plus.eval(self.sample_2),2)
     self.assertEqual(self.count_green_above_blue.eval(self.sample_2),1)
+    
+  def testNearEval(self):
+    self.assertEqual(self.is_red_near_blue.eval(self.sample_3),False)
+    self.assertEqual(self.is_red_near_blue.eval(self.sample_4),True)
 
 if __name__ == '__main__':
   unittest.main()

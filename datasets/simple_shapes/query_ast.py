@@ -18,6 +18,14 @@ PLUS = 2
 SHAPE_PROPERTY_STRS = {ELLIPSE : 'ellipse', PLUS : 'plus'}
 SHAPE_PROPERTY_INTS = {'ellipse': ELLIPSE, 'plus': PLUS}
 
+class Op(object):
+  def eval(self, sample):
+    return sample
+  def query(self):
+    return ""
+  def __call__(self, sample):
+    self.eval(sample)
+
 #=============================================================================#
 #                               Nullary Ops                                   #
 #=============================================================================#
@@ -28,7 +36,7 @@ SHAPE_PROPERTY_INTS = {'ellipse': ELLIPSE, 'plus': PLUS}
 #   z = Property([Color(RED)])
 #  
 
-class NullaryOp(object):
+class NullaryOp(Op):
   def __init__(self, value):
     self.value = value 
 
@@ -36,7 +44,7 @@ class Color(NullaryOp):
   def eval(self, sample):
     return sample[0] == self.value
 
-  def query(self, single=False):
+  def query(self, single=True):
     if single:
       return COLOR_PROPERTY_STRS[self.value]+" shape"
     return COLOR_PROPERTY_STRS[self.value]
@@ -45,7 +53,7 @@ class Shape(NullaryOp):
   def eval(self, sample):
     return sample[1] == self.value
 
-  def query(self, single=False):
+  def query(self, single=True):
     return SHAPE_PROPERTY_STRS[self.value]
 
 class Property(NullaryOp):  #Value is assumed to be a list.
@@ -64,7 +72,7 @@ class Property(NullaryOp):  #Value is assumed to be a list.
 #=============================================================================#
 # Has one input.
 
-class UnaryOp(object):
+class UnaryOp(Op):
   def __init__(self, input):
     self.input = input
 
@@ -86,7 +94,7 @@ class Count(UnaryOp):
 #                                 Binary Ops                                  #
 #=============================================================================#
 
-class BinaryOp(object):
+class BinaryOp(Op):
   def __init__(self, left, right):
     self.left = left
     self.right = right
@@ -105,6 +113,11 @@ class Or(BinaryOp):
   def query(self):
     return '{} or {}'.format(self.left.query(), self.right.query())
 
+def translateMask(mask,dx,dy):
+  pad_mask = np.pad(mask, ((2,2),(2,2)), 'constant')
+  push_mask = pad_mask[2-dy:-2-dy,2-dx:-2-dx]
+  return push_mask
+
 class RelDir(BinaryOp):
   def __init__(self, left, right, dirVec, name):
     BinaryOp.__init__(self,left,right)
@@ -119,8 +132,7 @@ class RelDir(BinaryOp):
 
   def eval(self, sample):
     key = self.right.eval(sample)
-    pad_key = np.pad(key, ((2,2),(2,2)), 'constant')
-    push_key = pad_key[2-self.dy:-2-self.dy,2-self.dx:-2-self.dx]
+    push_key = translateMask(key,self.dx,self.dy)
     push_key = self.rev(np.logical_or.accumulate(self.rev(push_key),self.axis))
     return np.logical_and(self.left.eval(sample), push_key)
 
@@ -145,7 +157,11 @@ class Right(RelDir):
 
 class Near(BinaryOp):
   def eval(self, sample):
-    pass
+    key = self.right.eval(sample)
+    moves = [(1,1),(1,0),(1,-1),(0,1),(0,-1),(-1,1),(-1,0),(-1,-1)]
+    stack = np.stack([translateMask(key,dx,dy) for dx,dy in moves])
+    push_key = np.logical_or.reduce(stack)
+    return np.logical_and(self.left.eval(sample), push_key)
 
   def query(self):
     return '{} near {}'.format(self.left.query(), self.right.query())
