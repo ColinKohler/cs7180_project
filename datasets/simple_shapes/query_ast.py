@@ -36,14 +36,16 @@ class Color(NullaryOp):
   def eval(self, sample):
     return sample[0] == self.value
 
-  def query(self):
+  def query(self, single=False):
+    if single:
+      return COLOR_PROPERTY_STRS[self.value]+" shape"
     return COLOR_PROPERTY_STRS[self.value]
 
 class Shape(NullaryOp):
   def eval(self, sample):
     return sample[1] == self.value
 
-  def query(self):
+  def query(self, single=False):
     return SHAPE_PROPERTY_STRS[self.value]
 
 class Property(NullaryOp):  #Value is assumed to be a list.
@@ -52,7 +54,10 @@ class Property(NullaryOp):  #Value is assumed to be a list.
     return np.logical_and.reduce(stack)
 
   def query(self):
-    return '{} {}'.format(self.value[0].query(), self.value[1].query())
+    single = False
+    if len(self.value) == 1:
+      single = True
+    return " ".join([val.query(single) for val in self.value])
 
 #=============================================================================#
 #                                 Unary Ops                                   #
