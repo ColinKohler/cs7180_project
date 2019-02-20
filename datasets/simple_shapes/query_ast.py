@@ -29,16 +29,16 @@ class Op(object):
 #=============================================================================#
 #                               Nullary Ops                                   #
 #=============================================================================#
-# Have no inputs, but do have values.  
+# Have no inputs, but do have values.
 # Examples:
 #   x = Property([Color(RED),Shape(ELLIPSE)])
 #   y = Color(RED)
 #   z = Property([Color(RED)])
-#  
+#
 
 class NullaryOp(Op):
   def __init__(self, value):
-    self.value = value 
+    self.value = value
 
 class Color(NullaryOp):
   def eval(self, sample):
@@ -46,7 +46,7 @@ class Color(NullaryOp):
 
   def query(self, single=True):
     if single:
-      return COLOR_PROPERTY_STRS[self.value]+" shape"
+      return COLOR_PROPERTY_STRS[self.value] + ' shape'
     return COLOR_PROPERTY_STRS[self.value]
 
 class Shape(NullaryOp):
@@ -62,10 +62,8 @@ class Property(NullaryOp):  #Value is assumed to be a list.
     return np.logical_and.reduce(stack)
 
   def query(self):
-    single = False
-    if len(self.value) == 1:
-      single = True
-    return " ".join([val.query(single) for val in self.value])
+    single = (len(self.value) == 1)
+    return ' '.join([val.query(single) for val in self.value])
 
 #=============================================================================#
 #                                 Unary Ops                                   #
@@ -81,14 +79,14 @@ class Is(UnaryOp):
     return np.any(self.input.eval(sample))
 
   def query(self):
-    return 'Is {}'.format(self.input.query())
+    return 'is {}'.format(self.input.query())
 
 class Count(UnaryOp):
   def eval(self, sample):
     return np.sum(self.input.eval(sample))
 
   def query(self):
-    return 'Count {}'.format(self.input.query())
+    return 'count {}'.format(self.input.query())
 
 #=============================================================================#
 #                                 Binary Ops                                  #
@@ -170,10 +168,14 @@ class Near(BinaryOp):
 #                                 Helpers                                     #
 #=============================================================================#
 def generateRandomProperty():
-  color = Color(npr.choice(list(COLOR_PROPERTY_INTS.values())))
-  shape = Shape(npr.choice(list(SHAPE_PROPERTY_INTS.values())))
-
-  return Property([color, shape])
+  rand = npr.randint(3)
+  if rand == 0:
+    return Property([Color(npr.choice(list(COLOR_PROPERTY_INTS.values()))),
+                     Shape(npr.choice(list(SHAPE_PROPERTY_INTS.values())))])
+  elif rand == 1:
+    return Property([Color(npr.choice(list(COLOR_PROPERTY_INTS.values())))])
+  else:
+    return Property([Shape(npr.choice(list(SHAPE_PROPERTY_INTS.values())))])
 
 def generateRandomRelational(prop_1, prop_2):
   relational = npr.choice([Above, Below, Left, Right])
