@@ -63,6 +63,7 @@ def main(args):
     if args.debug:
       plt.title('{}: {}'.format(query.query(), label))
       plt.imshow(sample)
+      plt.axis('off')
       plt.show()
 
   # Save dataset

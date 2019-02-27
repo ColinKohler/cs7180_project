@@ -1,6 +1,7 @@
 # Repo specific
 datasets/simple_shapes/*.npy
-datasets/simple_shapes/data.npy
+datasets/simple_shapes/data/
+milestone_1_assets/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
