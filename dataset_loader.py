@@ -5,9 +5,8 @@ import numpy.random as npr
 import torch
 import torch.utils.data as data_utils
 
-DATASETS_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'datasets/')
-SCALABLE_SHAPES_PATH = os.path.join(DATASETS_PATH, 'scalable_shapes/data/')
-
+DATASETS_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'datasets')
+SCALABLE_SHAPES_PATH = os.path.join(DATASETS_PATH, 'scalable_shapes','data')
 
 class QueryLang(object):
   def __init__(self):
