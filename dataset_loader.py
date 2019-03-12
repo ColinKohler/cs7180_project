@@ -81,10 +81,12 @@ def createScalableShapesDataLoader(dataset, batch_size=64, rebalanced=True):
   train_labels, train_samples = convertNumpyToTorch(train_labels, train_samples)
   train_queries, train_query_lens = convertNumpyToTorch(train_queries, train_query_lens)
   train_queries, train_query_lens = train_queries.long(), train_query_lens.long()
+  train_samples = train_samples.float()
 
   test_labels, test_samples = convertNumpyToTorch(test_labels, test_samples)
   test_queries, test_query_lens = convertNumpyToTorch(test_queries, test_query_lens)
   test_queries, test_query_lens = test_queries.long(), test_query_lens.long()
+  test_samples = test_samples.float()
 
   # Load data into dataset loaders
   train_dataset = data_utils.TensorDataset(train_samples, train_queries, train_query_lens, train_labels)
