@@ -1,6 +1,7 @@
 # TODO:
-- Prototype model using simplified dataset - keep modules as simple/few as possible. Jupyter notebook?
-- Run prototype model on full shapes dataset (need more modules than before)
-- Compare our model with theirs in terms of number of weights, parameters, training time, etc.
-- Describe the functions of the various modules
-- Iron out gridworld dataset details (samples, commands, etc)
+- Decoder input/hidden
+    1. No input (Robin thinks maybe not bad) 
+    2. Encoder hidden state as input, repeatedly
+    3. Encoder output as input, init decoder hidden with encoder hidden, loop over input
+    4. Decncoder ouptut as input (seq to seq strategy)
+- x_t for find/relocate might need to be different
