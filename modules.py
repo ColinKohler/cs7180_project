@@ -13,7 +13,7 @@ class And(nn.Module):
 
   def forward(self, attention):
     # Soft-logical and (Min)
-    return torch.min(attention, dim=2)[0]
+    return torch.min(attention, dim=0)[0]
 
 class Or(nn.Module):
   def __init__(self):
@@ -22,7 +22,7 @@ class Or(nn.Module):
 
   def forward(self, attention):
      # Soft-logical or (Max)
-    return torch.max(attention, dim=2)[0]
+    return torch.max(attention, dim=0)[0]
 
 class Id(nn.Module):
   def __init__(self):
