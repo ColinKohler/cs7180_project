@@ -54,11 +54,12 @@ class Find(nn.Module):
   def forward(self, context, text):
     batch_size = context.size(0)
     text_mapped = self.fc1(text).view(batch_size, self.context_size[1], self.context_size[2], self.num_kernels)
+    #TODO: Double check this
     context_mapped = F.relu(self.conv1(context)).permute(0, 2, 3, 1)
     return F.relu(self.conv2((text_mapped  * context_mapped).permute(0, 3, 1, 2)))
 
 class Relocate(nn.Module):
-  def __init__(self, input_size, num_kernels=64, kernel_size=5, relocate_where_dim=128):
+  def __init__(self, input_size, num_kernels=64, kernel_size=5, relocate_where_dim=64):
     super(Relocate, self).__init__()
     self.num_attention_maps = 1
 
@@ -68,17 +69,23 @@ class Relocate(nn.Module):
     self.relocate_where_dim = relocate_where_dim
 
     # conv2(conv1(xvis) * W1*sum(a * xvis) * W2*xtxt)
-    self.fc1 = nn.Linear(self.input_size[0], (self.input_size[1] ** 2) * self.num_kernels)
-    self.fc2 = nn.Linear(self.relocate_where_dim, (self.input_size[1] ** 2) * self.num_kernels)
+    self.fc1 = nn.Linear((self.input_size[1] ** 2) * self.input_size[0], ((self.input_size[1] - self.kernel_size + 1) ** 2) * self.num_kernels)
+    self.fc2 = nn.Linear(self.relocate_where_dim, ((self.input_size[1] - self.kernel_size + 1) ** 2) * self.num_kernels)
     self.conv1 = nn.Conv2d(self.input_size[0], self.num_kernels, self.kernel_size)
     self.conv2 = nn.Conv2d(self.num_kernels, 1, self.kernel_size)
+    self.fc3 = nn.Linear(((self.input_size[1] - self.kernel_size + 1) ** 2) * self.num_kernels , (self.input_size[1] ** 2))
 
   # TODO: relocate_where is a bad name
   def forward(self, attention, context, relocate_where):
+    batch_size = attention.shape[0]
     conv_xvis = F.relu(self.conv1(context))
-    xvis_attend = F.relu(self.fc1(torch.einsum('ijk,ijl->l', attention, context)))
-    W2_xtxt = F.relu(self.fc2(relocate_where))
-    return F.relu(self.conv2(conv_xvis * xvis_attend * W2_xtxt))
+    es = torch.einsum('bij,bkij->bkij', attention.squeeze(), context)
+    xvis_attend = F.relu(self.fc1(es.view(batch_size,-1)))
+    W2_xtxt = F.relu(self.fc2(relocate_where.view(batch_size,-1)))
+    m = conv_xvis.view(batch_size,-1) * xvis_attend * W2_xtxt
+    #TODO: Should be conv2 not fc3, but the dim has gotten really small
+    return F.relu(self.fc3(m)).view(batch_size, self.input_size[1],-1)
+    #return F.relu(self.conv2(conv_xvis * xvis_attend.view(batch_size,self.num_kernels,self.input_size[1]- self.kernel_size + 1, -1 ) * W2_xtxt.view(batch_size,self.num_kernels,self.input_size[1]- self.kernel_size + 1, -1 )))
 
 
 ###########################################################################################################################################
