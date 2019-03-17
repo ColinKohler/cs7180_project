@@ -100,7 +100,7 @@ class Exist(nn.Module):
     self.input_size = input_size
 
     # W * vec(a)
-    self.fc1 = nn.Linear(self.input_size[-1]**2, 1)
+    self.fc1 = nn.Linear(self.input_size[-1]**2, 2)
 
   def forward(self, attention):
     batch_size = attention.size(0)

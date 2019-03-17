@@ -32,6 +32,9 @@ class QueryLang(object):
   def encodeQuery(self, query):
     return [self.word_to_index[word] for word in query.split(' ')]
 
+  def decodeQuery(self, encoded_query):
+    return [self.index_to_word[index.item()] for index in encoded_query]
+
 def createScalableShapesDataLoader(dataset, batch_size=64, rebalanced=True):
   # Load labels, queries, and samples as numpy arrays
   if rebalanced:

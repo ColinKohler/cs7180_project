@@ -168,11 +168,11 @@ class Near(BinaryOp):
 #                                 Helpers                                     #
 #=============================================================================#
 def generateRandomProperty():
-  rand = npr.randint(3)
+  rand = npr.randint(2)
+  # if rand == 0:
+  #   return Property([Color(npr.choice(list(COLOR_PROPERTY_INTS.values()))),
+  #                    Shape(npr.choice(list(SHAPE_PROPERTY_INTS.values())))])
   if rand == 0:
-    return Property([Color(npr.choice(list(COLOR_PROPERTY_INTS.values()))),
-                     Shape(npr.choice(list(SHAPE_PROPERTY_INTS.values())))])
-  elif rand == 1:
     return Property([Color(npr.choice(list(COLOR_PROPERTY_INTS.values())))])
   else:
     return Property([Shape(npr.choice(list(SHAPE_PROPERTY_INTS.values())))])
