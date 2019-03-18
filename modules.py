@@ -54,7 +54,6 @@ class Find(nn.Module):
   def forward(self, context, text):
     batch_size = context.size(0)
     text_mapped = self.fc1(text).view(batch_size, self.context_size[1], self.context_size[2], self.num_kernels)
-    #TODO: Double check this
     context_mapped = F.relu(self.conv1(context)).permute(0, 2, 3, 1)
     return F.relu(self.conv2((text_mapped  * context_mapped).permute(0, 3, 1, 2)))
 
