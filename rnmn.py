@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 import numpy as np
+import matplotlib.pyplot as plt
 import ipdb
 
 from modules import And, Or, Id, Find, Relocate, Exist
@@ -77,7 +78,7 @@ class RNMN(nn.Module):
       elif type(module) is Relocate:
         b_t[:,i] = module.forward(attention, encoded_context, self.x_t)
       elif type(module) is Exist:
-        out = module.forward(attention.squeeze())
+        out = module.forward(attention)
       else:
         raise ValueError('Invalid Module: {}'.format(type(module)))
 
@@ -103,7 +104,7 @@ class RNMN(nn.Module):
       encoder_hiddens[:,ei,:] = encoder_hidden[0]
       encoder_cell_states[:,ei,:] = encoder_hidden[1]
 
-    #Decoder initial state set to hidden state at end of each query
+    # Decoder initial state set to hidden state at end of each query
     encoder_hiddens_at_end = encoder_hiddens.gather(1, query_end_inds.view(-1,1).unsqueeze(2).repeat(1, 1, self.hidden_size)).permute(1,0,2)
     encoder_cell_states_at_end = encoder_cell_states.gather(1, query_end_inds.view(-1,1).unsqueeze(2).repeat(1, 1, self.hidden_size)).permute(1,0,2)
 

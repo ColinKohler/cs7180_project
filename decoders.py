@@ -29,8 +29,8 @@ class Decoder(nn.Module):
     M = out[:,:,:M_end].view(batch_size,self.M_dim[0], self.M_dim[1])
     x = out[:,:,M_end:].view(batch_size,1, -1)
 
-    #TODO: M might need some normalization
-    return F.relu(M), x
+    M = F.softmax(M, dim=2)
+    return M, x
 
   def resetHidden(self, batch_size):
     # The axes semantics are (num_layers, minibatch_size, hidden_dim)
