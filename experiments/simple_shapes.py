@@ -20,11 +20,14 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def train(config):
   # Load dataset
-  query_lang, train_loader, test_loader = dataset_loader.createScalableShapesDataLoader('v5', batch_size=config.batch_size)
+  query_lang, train_loader, test_loader = dataset_loader.createScalableShapesDataLoader('v1', batch_size=config.batch_size)
 
   # Init model
   model = RNMN(query_lang.num_words, config.hidden_size, device).to(device)
-  optimizer = torch.optim.Adam(model.parameters(), lr=config.lr, weight_decay=config.weight_decay)
+  if config.weight_decay == 0:
+    optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
+  else:
+    optimizer = torch.optim.Adam(model.parameters(), lr=config.lr, weight_decay=config.weight_decay)
   criterion = nn.NLLLoss()
 
   # Create TQDM progress bar
@@ -60,12 +63,15 @@ def train(config):
   # Close progress bar
   pbar.close()
 
-  samples, queries, query_lens, labels = test_loader.dataset[:16]
-  plt.title(query_lang.decodeQuery(queries[0]))
-  plt.imshow(samples[0].permute(1,2,0))
-  plt.show()
-  output, loss, correct = testBatch(model, criterion, samples, queries, query_lens, labels, debug=True)
-  print(output)
+  samples, queries, query_lens, labels = test_loader.dataset[:1028]
+  # for query in queries:
+  #   print(' '.join(query_lang.decodeQuery(query)))
+  # plt.title(query_lang.decodeQuery(queries[0]))
+  # plt.imshow(samples[0].permute(1,2,0))
+  # plt.show()
+  output, loss, correct = testBatch(model, criterion, samples, queries, query_lens, labels, debug=False)
+  # print(output.argmax(dim=1).cpu())
+  # print(labels.round().t().long().cpu().squeeze())
   print(correct)
 
 def test(config):
