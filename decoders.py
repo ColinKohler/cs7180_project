@@ -5,12 +5,12 @@ import torch.nn.functional as F
 import ipdb
 
 class Decoder(nn.Module):
-  def __init__(self, input_dim, hidden_dim, M_dim, x_dim, device):
+  def __init__(self, input_dim, hidden_dim, M_dim, x_dim, max_length, device):
     super(Decoder, self).__init__()
     self.device = device
     self.input_dim = input_dim
     self.hidden_dim = hidden_dim
-    self.max_length = 3 # TODO: This should be set to something smart
+    self.max_length = max_length
     self.M_dim = M_dim
     self.x_dim = x_dim
     self.output_dim = M_dim[0] * M_dim[1] + x_dim

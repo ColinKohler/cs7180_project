@@ -20,7 +20,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def train(config):
   # Load dataset
-  query_lang, train_loader, test_loader = dataset_loader.createScalableShapesDataLoader('v4', batch_size=config.batch_size)
+  query_lang, train_loader, test_loader = dataset_loader.createScalableShapesDataLoader('v5', batch_size=config.batch_size)
 
   # Init model
   model = RNMN(query_lang.num_words, config.hidden_size, device).to(device)

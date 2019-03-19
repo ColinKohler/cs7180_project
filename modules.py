@@ -55,7 +55,8 @@ class Find(nn.Module):
     batch_size = context.size(0)
     text_mapped = F.relu(self.fc1(text)).view(batch_size, self.num_kernels, 1, 1)
     context_mapped = F.relu(self.conv1(context))
-    return F.relu(self.conv2((text_mapped  * context_mapped)))
+    eltwise_mult = F.normalize(text_mapped  * context_mapped, dim=3)
+    return F.relu(self.conv2(eltwise_mult))
 
 class Relocate(nn.Module):
   def __init__(self, context_size, num_kernels=64, text_dim=64):
@@ -68,20 +69,23 @@ class Relocate(nn.Module):
     self.text_dim = text_dim
 
     # conv2(conv1(xvis) * W1*sum(a * xvis) * W2*xtxt)
-    self.fc1 = nn.Linear(self.text_dim, (self.context_size[1] ** 2) * self.num_kernels)
-    self.fc2 = nn.Linear((self.context_size[1] ** 2) * self.context_size[0], ((self.context_size[1] - self.kernel_size + 1) ** 2) * self.num_kernels)
+    self.fc1 = nn.Linear(self.text_dim, self.num_kernels)
+    self.fc2 = nn.Linear(self.context_size[0], self.num_kernels)
     self.conv1 = nn.Conv2d(self.context_size[0], self.num_kernels, 1)
     self.conv2 = nn.Conv2d(self.num_kernels, 1, 1)
 
   def forward(self, attention, context, text):
     batch_size = attention.shape[0]
-    text_mapped = self.fc1(text).view(batch_size, self.context_size[1], self.context_size[2], self.num_kernels)
-    context_mapped = F.relu(self.conv1(context)).permute(0, 2, 3, 1)
+    text_mapped = self.fc1(text).view(batch_size, self.num_kernels, 1, 1)
+    context_mapped = F.relu(self.conv1(context))
 
-    attention = torch.sum(torch.einsum('bij,bkij->bkij', attention.squeeze(), context))
-    attention_mapped = self.fc2(attention)
+    attention_softmax = F.softmax(attention.view(batch_size, -1), dim=1)
+    attention_softmax = attention_softmax.view(batch_size, 1, self.context_size[1], self.context_size[2])
+    attention = torch.sum(context * attention_softmax, dim=[2,3])
+    attention_mapped = self.fc2(attention).view(batch_size, self.num_kernels, 1, 1)
 
-    return F.relu(self.conv2(context_mapped * text_mapped * attention_mapped))
+    eltwise_mult = F.normalize(context_mapped * text_mapped * attention_mapped, dim=3)
+    return F.relu(self.conv2(eltwise_mult))
 
 ###########################################################################################################################################
 #                                                          Answer Modules                                                                 #

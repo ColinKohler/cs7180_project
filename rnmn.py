@@ -20,23 +20,23 @@ class RNMN(nn.Module):
 
     # Create attention and answer modules
     self.find = Find(self.context_size)
-    #self.relocate = Relocate(self.context_size)
+    self.relocate = Relocate(self.context_size)
     self.exist = Exist(self.context_size)
 
-    self.attention_modules = [Or(), self.find]
+    self.attention_modules = [Or(), And(), Id(), self.find, self.relocate]
     self.num_att_modules = len(self.attention_modules)
     self.answer_modules = [self.exist]
     [module.to(self.device) for module in self.attention_modules + self.answer_modules]
 
     # Create query and context encoders
-    max_query_len = 3
+    max_query_len = 7
     self.query_encoder = QueryEncoder(self.query_size, self.hidden_size, max_query_len, self.device)
     self.context_encoder = ContextEncoder()
 
     # Create decoder
     self.M_size = (self.num_att_modules, sum([m.num_attention_maps for m in self.attention_modules + self.answer_modules]))
     self.x_size = 64
-    self.decoder = Decoder(self.query_size, self.hidden_size, self.M_size, self.x_size, self.device)
+    self.decoder = Decoder(self.query_size, self.hidden_size, self.M_size, self.x_size, max_query_len, self.device)
 
   def forward(self, query, query_len, context, debug=False):
     batch_size = query.size(0)
@@ -75,9 +75,9 @@ class RNMN(nn.Module):
       elif type(module) is Or:
         b_t[:,i] = module.forward(attention)
       elif type(module) is Find:
-        b_t[:,i] = module.forward(encoded_context, self.x_t).squeeze()
+        b_t[:,i] = module.forward(encoded_context, self.x_t).squeeze(1)
       elif type(module) is Relocate:
-        b_t[:,i] = module.forward(attention, encoded_context, self.x_t)
+        b_t[:,i] = module.forward(attention, encoded_context, self.x_t).squeeze(1)
       elif type(module) is Exist:
         out = module.forward(attention)
       else:
