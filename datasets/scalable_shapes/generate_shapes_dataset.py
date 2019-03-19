@@ -68,9 +68,9 @@ def main(args):
 
   # Save dataset
   if not args.debug:
-    np.save('./data/v3/samples.npy', samples)
-    np.save('./data/v3/queries.npy', queries)
-    np.save('./data/v3/labels.npy', labels)
+    np.save('./data/v4/samples.npy', samples)
+    np.save('./data/v4/queries.npy', queries)
+    np.save('./data/v4/labels.npy', labels)
 
 def generateQuery():
   ''' Generate query by combining all possible query parts '''
