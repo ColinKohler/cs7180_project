@@ -29,13 +29,14 @@ class RNMN(nn.Module):
     [module.to(self.device) for module in self.attention_modules + self.answer_modules]
 
     # Create query and context encoders
-    self.query_encoder = QueryEncoder(self.query_size, self.hidden_size, self.device)
+    max_query_len = 3
+    self.query_encoder = QueryEncoder(self.query_size, self.hidden_size, max_query_len, self.device)
     self.context_encoder = ContextEncoder()
 
     # Create decoder
     self.M_size = (self.num_att_modules, sum([m.num_attention_maps for m in self.attention_modules + self.answer_modules]))
     self.x_size = 64
-    self.decoder = Decoder(self.hidden_size, self.M_size, self.x_size, self.device)
+    self.decoder = Decoder(self.query_size, self.hidden_size, self.M_size, self.x_size, self.device)
 
   def forward(self, query, query_len, context, debug=False):
     batch_size = query.size(0)
@@ -46,11 +47,11 @@ class RNMN(nn.Module):
 
     # Loop over timesteps using modules until a threshold is met
     self.decoder.hidden = query_hidden
-    self.a_t = torch.zeros((batch_size, self.M_size[1], self.context_size[1], self.context_size[2]), device=self.device)
+    self.a_t = torch.randn((batch_size, self.M_size[1], self.context_size[1], self.context_size[2]), requires_grad=True, device=self.device)
     # TODO: This for loop should be replaced with some sort of thresholding junk
     if debug: ipdb.set_trace()
     for t in range(2):
-      self.M_t, self.x_t = self.decoder()
+      self.M_t, self.x_t = self.decoder(query, encoded_query, debug=debug)
       self.a_t, out = self.forward_1t(encoded_context, debug=debug)
 
     return F.log_softmax(out, dim=1)
@@ -91,21 +92,9 @@ class RNMN(nn.Module):
     max_query_len = query.size(1)
     query_end_inds = query_len - 1
 
-    encoder_outputs = torch.zeros(batch_size, max_query_len, self.query_encoder.hidden_size, device=self.device)
-    encoder_hiddens = torch.zeros(batch_size, max_query_len, self.query_encoder.hidden_size, device=self.device)
-    encoder_cell_states = torch.zeros(batch_size, max_query_len, self.query_encoder.hidden_size, device=self.device)
-
     # Encode each word in the query
     self.query_encoder.resetHidden(batch_size)
     if debug: ipdb.set_trace()
-    for ei in range(max_query_len):
-      encoder_output, encoder_hidden = self.query_encoder(query[:,ei])
-      encoder_outputs[:,ei,:] = encoder_output
-      encoder_hiddens[:,ei,:] = encoder_hidden[0]
-      encoder_cell_states[:,ei,:] = encoder_hidden[1]
+    outputs, (hidden_states, cell_states)  = self.query_encoder(query)
 
-    # Decoder initial state set to hidden state at end of each query
-    encoder_hiddens_at_end = encoder_hiddens.gather(1, query_end_inds.view(-1,1).unsqueeze(2).repeat(1, 1, self.hidden_size)).permute(1,0,2)
-    encoder_cell_states_at_end = encoder_cell_states.gather(1, query_end_inds.view(-1,1).unsqueeze(2).repeat(1, 1, self.hidden_size)).permute(1,0,2)
-
-    return encoder_outputs, (encoder_hiddens_at_end, encoder_cell_states_at_end)
+    return outputs, (hidden_states, cell_states)

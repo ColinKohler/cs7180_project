@@ -17,7 +17,7 @@ import dataset_loader
 from rnmn import RNMN
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-torch.manual_seed(0) # 9=good
+# torch.manual_seed(1) # 9=good
 
 def tensorToDevice(*tensors):
   return [tensor.to(device) for tensor in tensors]
@@ -43,7 +43,7 @@ def testBatch(model, criterion, samples, queries, query_lens, labels, debug=Fals
     samples, queries, query_lens, labels = tensorToDevice(samples, queries, query_lens, labels)
     output = model(queries, query_lens, samples, debug=debug)
 
-    # Compute loss & acccriterionuracy
+    # Compute loss & accuracy
     loss = criterion(output, labels.squeeze(1).long())
     pred = output.argmax(dim=1, keepdim=True)
     correct = pred.eq(labels.view_as(pred).round().long()).sum()
@@ -51,18 +51,19 @@ def testBatch(model, criterion, samples, queries, query_lens, labels, debug=Fals
   return output, loss.item(), correct.item()
 
 def train():
-  # Set hyperparams and load dataset
-  lr = 1e-4
+  # Set hyperparams
+  lr = 1e-3
   hidden_size = 256
-  #overliberal use of squeeze prevents setting to 1
   batch_size = 256
-  epochs = 10
+  epochs = 100
 
+  # Load dataset
   query_lang, train_loader, test_loader = dataset_loader.createScalableShapesDataLoader('v3', batch_size=batch_size)
 
   # Init model
   model = RNMN(query_lang.num_words, hidden_size, device).to(device)
-  optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+  optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-4)
+  # optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9)
   criterion = nn.NLLLoss()
 
   # Create TQDM progress bar
@@ -78,8 +79,8 @@ def train():
 
 	  # Test for a single epoch iterating over the minibatches
 	  test_loss, test_correct = 0, 0
-	  for samples, queries, query_lens, labels in test_loader:
-	    _, batch_loss, batch_correct = testBatch(model, criterion, samples, queries, query_lens, labels)
+	  for i, (samples, queries, query_lens, labels) in enumerate(test_loader):
+	    _, batch_loss, batch_correct = testBatch(model, criterion, samples, queries, query_lens, labels, debug=False)
 	    test_loss += batch_loss
 	    test_correct += batch_correct
 
@@ -96,11 +97,11 @@ def train():
   # Close progress bar
   pbar.close()
 
-  samples, queries, query_lens, labels = test_loader.dataset[:1]
+  samples, queries, query_lens, labels = test_loader.dataset[:16]
   plt.title(query_lang.decodeQuery(queries[0]))
   plt.imshow(samples[0].permute(1,2,0))
   plt.show()
-  output, loss, correct = testBatch(model, criterion, samples, queries, query_lens, labels, debug=False)
+  output, loss, correct = testBatch(model, criterion, samples, queries, query_lens, labels, debug=True)
   print(output)
   print(correct)
 
