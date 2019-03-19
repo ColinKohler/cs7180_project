@@ -17,10 +17,59 @@ import dataset_loader
 from rnmn import RNMN
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-# torch.manual_seed(1) # 9=good
 
-def tensorToDevice(*tensors):
-  return [tensor.to(device) for tensor in tensors]
+def train(config):
+  # Load dataset
+  query_lang, train_loader, test_loader = dataset_loader.createScalableShapesDataLoader('v4', batch_size=config.batch_size)
+
+  # Init model
+  model = RNMN(query_lang.num_words, config.hidden_size, device).to(device)
+  optimizer = torch.optim.Adam(model.parameters(), lr=config.lr, weight_decay=config.weight_decay)
+  criterion = nn.NLLLoss()
+
+  # Create TQDM progress bar
+  pbar = tqdm.tqdm(total=config.epochs)
+  pbar.set_description('Train Loss:0.0 | Train Acc:0.0 | Test Loss:0.0 | Test Acc:0.0')
+
+  train_losses, test_losses, test_accs = list(), list(), list()
+  for epoch in range(config.epochs):
+	  # Train for a single epoch iterating over the minibatches
+	  train_loss = 0
+	  for samples, queries, query_lens, labels in train_loader:
+	    train_loss += trainBatch(model, optimizer, criterion, samples, queries,
+                               query_lens, labels, debug=config.debug)
+
+	  # Test for a single epoch iterating over the minibatches
+	  test_loss, test_correct = 0, 0
+	  for i, (samples, queries, query_lens, labels) in enumerate(test_loader):
+	    _, batch_loss, batch_correct = testBatch(model, criterion, samples, queries,
+                                               query_lens, labels, debug=config.debug)
+	    test_loss += batch_loss
+	    test_correct += batch_correct
+
+	  # Bookkeeping
+	  train_losses.append(train_loss / (len(train_loader.dataset) / config.batch_size))
+	  test_losses.append(test_loss / (len(test_loader.dataset) / config.batch_size))
+	  test_accs.append(test_correct / len(test_loader.dataset))
+
+	  # Update progress bar
+	  pbar.set_description('Train Loss:{:.5f} | Test Loss:{:.5f} | Test Acc:{:.3f}'.format(
+      train_losses[-1], test_losses[-1], test_accs[-1]))
+	  pbar.update(1)
+
+  # Close progress bar
+  pbar.close()
+
+  samples, queries, query_lens, labels = test_loader.dataset[:16]
+  plt.title(query_lang.decodeQuery(queries[0]))
+  plt.imshow(samples[0].permute(1,2,0))
+  plt.show()
+  output, loss, correct = testBatch(model, criterion, samples, queries, query_lens, labels, debug=True)
+  print(output)
+  print(correct)
+
+def test(config):
+  pass
 
 def trainBatch(model, optimizer, criterion, samples, queries, query_lens, labels, debug=False):
   model.train()
@@ -50,62 +99,35 @@ def testBatch(model, criterion, samples, queries, query_lens, labels, debug=Fals
 
   return output, loss.item(), correct.item()
 
-def train():
-  # Set hyperparams
-  lr = 1e-3
-  hidden_size = 256
-  batch_size = 256
-  epochs = 100
-
-  # Load dataset
-  query_lang, train_loader, test_loader = dataset_loader.createScalableShapesDataLoader('v3', batch_size=batch_size)
-
-  # Init model
-  model = RNMN(query_lang.num_words, hidden_size, device).to(device)
-  optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-4)
-  # optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9)
-  criterion = nn.NLLLoss()
-
-  # Create TQDM progress bar
-  pbar = tqdm.tqdm(total=epochs)
-  pbar.set_description('Train Loss:0.0 | Train Acc:0.0 | Test Loss:0.0 | Test Acc:0.0')
-
-  train_losses, test_losses, test_accs = list(), list(), list()
-  for epoch in range(epochs):
-	  # Train for a single epoch iterating over the minibatches
-	  train_loss = 0
-	  for samples, queries, query_lens, labels in train_loader:
-	    train_loss += trainBatch(model, optimizer, criterion, samples, queries, query_lens, labels)
-
-	  # Test for a single epoch iterating over the minibatches
-	  test_loss, test_correct = 0, 0
-	  for i, (samples, queries, query_lens, labels) in enumerate(test_loader):
-	    _, batch_loss, batch_correct = testBatch(model, criterion, samples, queries, query_lens, labels, debug=False)
-	    test_loss += batch_loss
-	    test_correct += batch_correct
-
-	  # Bookkeeping
-	  train_losses.append(train_loss / (len(train_loader.dataset) / batch_size))
-	  test_losses.append(test_loss / (len(test_loader.dataset) / batch_size))
-	  test_accs.append(test_correct / len(test_loader.dataset))
-
-	  # Update progress bar
-	  pbar.set_description('Train Loss:{:.5f} | Test Loss:{:.5f} | Test Acc:{:.3f}'.format(
-      train_losses[-1], test_losses[-1], test_accs[-1]))
-	  pbar.update(1)
-
-  # Close progress bar
-  pbar.close()
-
-  samples, queries, query_lens, labels = test_loader.dataset[:16]
-  plt.title(query_lang.decodeQuery(queries[0]))
-  plt.imshow(samples[0].permute(1,2,0))
-  plt.show()
-  output, loss, correct = testBatch(model, criterion, samples, queries, query_lens, labels, debug=True)
-  print(output)
-  print(correct)
+def tensorToDevice(*tensors):
+  return [tensor.to(device) for tensor in tensors]
 
 if __name__ == '__main__':
-  # parser = argparse.Ark
+  parser = argparse.ArgumentParser()
+  parser.add_argument('epochs', type=int, default=100,
+      help='Number of epochs to train/test for')
+  parser.add_argument('--lr', type=float, default=1e-3,
+      help='Learning rate for the model')
+  parser.add_argument('--weight_decay', type=float, default=1e-4,
+      help='L2 weight decay parameter for optimizr')
+  parser.add_argument('--hidden_size', type=int, default=256,
+      help='Number of units in the LSTM layers in the query encoder/decoders')
+  parser.add_argument('--batch_size', type=int, default=256,
+      help='Minibatch size for data loaders')
+  parser.add_argument('--seed', type=int, default=None,
+      help='PyTorch random seed to use for this run')
+  parser.add_argument('--load_model', type=str, default=None,
+      help='Model to load')
+  parser.add_argument('--test', default=False, action='store_true',
+      help='Enter test mode. Must specify a model to load')
+  parser.add_argument('--debug', default=False, action='store_true',
+      help='Enter debugging mode')
 
-  train()
+  args = parser.parse_args()
+  if args.seed: torch.manual_seed(args.seed) # 9=good
+  if not args.test:
+    train(args)
+  elif args.test and args.load_model:
+    test(args)
+  else:
+    ValueError('Must specify model to load if in test mode.')

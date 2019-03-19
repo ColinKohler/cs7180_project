@@ -16,6 +16,7 @@ def main():
 
   # exists_subset = npr.choice(true_exists, len(true_relation))
   false_subset = npr.choice(np.where(np.logical_not(labels))[0], len(true_exists))
+  print(false_subset.shape)
 
   np.save('data/v4/rebalanced_samples.npy', samples[np.concatenate(( true_exists, false_subset))])
   np.save('data/v4/rebalanced_queries.npy', queries[np.concatenate(( true_exists, false_subset))])

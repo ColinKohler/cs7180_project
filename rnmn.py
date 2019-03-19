@@ -98,3 +98,9 @@ class RNMN(nn.Module):
     outputs, (hidden_states, cell_states)  = self.query_encoder(query)
 
     return outputs, (hidden_states, cell_states)
+
+  def saveModel(self, save_path):
+    pass
+
+  def loadModel(self, load_path):
+    pass
