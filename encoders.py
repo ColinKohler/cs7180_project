@@ -17,11 +17,13 @@ class QueryEncoder(nn.Module):
     self.hidden = (torch.zeros(self.num_layers, batch_size, self.hidden_size).to(self.device),
                    torch.zeros(self.num_layers, batch_size, self.hidden_size).to(self.device))
 
-  def forward(self, query):
+  def forward(self, query, query_len):
     batch_size = query.size(0)
-    embeds = self.word_embeddings(query.permute(1,0))
-    lstm_out, self.hidden = self.lstm(embeds, self.hidden)
-    return lstm_out, self.hidden
+    embedded = self.word_embeddings(query.permute(1,0))
+    packed = nn.utils.rnn.pack_padded_sequence(embedded, query_len)
+    lstm_out, self.hidden = self.lstm(packed, self.hidden)
+    output, output_lens = torch.nn.utils.rnn.pad_packed_sequence(lstm_out)
+    return output, self.hidden
 
 class ContextEncoder(nn.Module):
   def __init__(self):

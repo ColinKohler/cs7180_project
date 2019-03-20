@@ -19,24 +19,24 @@ class RNMN(nn.Module):
     self.context_size = [64, 6, 6]
 
     # Create attention and answer modules
-    self.find = Find(self.context_size)
-    self.relocate = Relocate(self.context_size)
+    self.find = Find(self.context_size, text_dim=3)
+    # self.relocate = Relocate(self.context_size)
     self.exist = Exist(self.context_size)
 
-    self.attention_modules = [And(), self.find, self.relocate]
+    self.attention_modules = [And(), self.find]
     self.num_att_modules = len(self.attention_modules)
     self.answer_modules = [self.exist]
     [module.to(self.device) for module in self.attention_modules + self.answer_modules]
 
     # Create query and context encoders
-    self.query_encoder = QueryEncoder(self.query_size, self.hidden_size, self.device)
+    self.query_encoder = QueryEncoder(self.query_size, self.hidden_size, self.device, num_layers=1)
     self.context_encoder = ContextEncoder()
 
     # Create decoder
     self.M_size = (self.num_att_modules, sum([m.num_attention_maps for m in self.attention_modules + self.answer_modules]))
     self.x_size = 256
     max_len = 3
-    self.decoder = Decoder(max_len, self.hidden_size, self.M_size, self.x_size, self.device)
+    self.decoder = Decoder(max_len, self.hidden_size, self.M_size, self.x_size, self.device, num_layers=1)
 
   def forward(self, query, query_len, context, debug=False):
     batch_size = query.size(0)
@@ -48,11 +48,12 @@ class RNMN(nn.Module):
     # Loop over timesteps using modules until a threshold is met
     self.decoder.hidden = query_hidden
     self.a_t = torch.randn((batch_size, self.M_size[1], self.context_size[1], self.context_size[2]), requires_grad=True, device=self.device)
+    self.M_t = torch.ones((batch_size, self.M_size[0], self.M_size[1]), requires_grad=True, device=self.device)
+
     # TODO: This for loop should be replaced with some sort of thresholding junk
     if debug: ipdb.set_trace()
-    for t in range(5):
-      init_out = torch.randn((1, batch_size, self.decoder.input_dim), requires_grad=True, device=self.device)
-      self.M_t, self.x_t = self.decoder(init_out, encoded_query, debug=debug)
+    for t in range(2):
+      self.M_t, self.x_t = self.decoder(self.M_t.view(batch_size, self.M_size[0]*self.M_size[1], 1).permute(2,0,1), encoded_query, debug=debug)
       self.a_t, out = self.forward_1t(encoded_context, debug=debug)
 
     return F.log_softmax(out, dim=1)
@@ -96,7 +97,7 @@ class RNMN(nn.Module):
     # Encode each word in the query
     self.query_encoder.resetHidden(batch_size)
     if debug: ipdb.set_trace()
-    outputs, (hidden_states, cell_states)  = self.query_encoder(query)
+    outputs, (hidden_states, cell_states)  = self.query_encoder(query, query_len)
 
     return outputs, (hidden_states, cell_states)
 
@@ -108,6 +109,6 @@ class RNMN(nn.Module):
 
   def printM(self, M, round_n=3):
     M = M.t()
-    print('  OR,   AND,  ID,   FIND, RELOC')
-    for i, module in enumerate(['Or1', 'Or2', 'And1', 'And2', 'Id', 'Reloc', 'Exist']):
+    print(' AND,  FIND')
+    for i, module in enumerate(['And1', 'And2', 'Exist']):
       print('{}: {}'.format(np.round(M[i].cpu().numpy(), 3), module))

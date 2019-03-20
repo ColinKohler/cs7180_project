@@ -36,42 +36,37 @@ def train(config):
 
   train_losses, test_losses, test_accs = list(), list(), list()
   for epoch in range(config.epochs):
-	  # Train for a single epoch iterating over the minibatches
-	  train_loss = 0
-	  for samples, queries, query_lens, labels in train_loader:
-	    train_loss += trainBatch(model, optimizer, criterion, samples, queries,
+    # Train for a single epoch iterating over the minibatches
+    train_loss = 0
+    for samples, queries, query_lens, labels in train_loader:
+      train_loss += trainBatch(model, optimizer, criterion, samples, queries,
                                query_lens, labels, debug=config.debug)
 
 	  # Test for a single epoch iterating over the minibatches
-	  test_loss, test_correct = 0, 0
-	  for i, (samples, queries, query_lens, labels) in enumerate(test_loader):
-	    _, batch_loss, batch_correct = testBatch(model, criterion, samples, queries,
+    test_loss, test_correct = 0, 0
+    for i, (samples, queries, query_lens, labels) in enumerate(test_loader):
+      _, batch_loss, batch_correct = testBatch(model, criterion, samples, queries,
                                                query_lens, labels, debug=config.debug)
-	    test_loss += batch_loss
-	    test_correct += batch_correct
+      test_loss += batch_loss
+      test_correct += batch_correct
 
-	  # Bookkeeping
-	  train_losses.append(train_loss / (len(train_loader.dataset) / config.batch_size))
-	  test_losses.append(test_loss / (len(test_loader.dataset) / config.batch_size))
-	  test_accs.append(test_correct / len(test_loader.dataset))
+    # Bookkeeping
+    train_losses.append(train_loss / (len(train_loader.dataset) / config.batch_size))
+    test_losses.append(test_loss / (len(test_loader.dataset) / config.batch_size))
+    test_accs.append(test_correct / len(test_loader.dataset))
 
-	  # Update progress bar
-	  pbar.set_description('Train Loss:{:.5f} | Test Loss:{:.5f} | Test Acc:{:.3f}'.format(
+    # Update progress bar
+    pbar.set_description('Train Loss:{:.5f} | Test Loss:{:.5f} | Test Acc:{:.3f}'.format(
       train_losses[-1], test_losses[-1], test_accs[-1]))
-	  pbar.update(1)
+    pbar.update(1)
 
   # Close progress bar
   pbar.close()
 
-  samples, queries, query_lens, labels = test_loader.dataset[:1028]
-  # for query in queries:
-  #   print(' '.join(query_lang.decodeQuery(query)))
-  # plt.title(query_lang.decodeQuery(queries[0]))
-  # plt.imshow(samples[0].permute(1,2,0))
-  # plt.show()
-  output, loss, correct = testBatch(model, criterion, samples, queries, query_lens, labels, debug=False)
-  # print(output.argmax(dim=1).cpu())
-  # print(labels.round().t().long().cpu().squeeze())
+  samples, queries, query_lens, labels = test_loader.dataset[:8]
+  output, loss, correct = testBatch(model, criterion, samples, queries, query_lens, labels, debug=True, query_lang=query_lang)
+  print(output.argmax(dim=1).cpu())
+  print(labels.round().t().long().cpu().squeeze())
   print(correct)
 
 def test(config):
@@ -80,6 +75,7 @@ def test(config):
 def trainBatch(model, optimizer, criterion, samples, queries, query_lens, labels, debug=False):
   model.train()
   # Transfer data to gpu/cpu and pass through model
+  samples, queries, query_lens, labels = sortByQueryLen(samples, queries, query_lens, labels)
   samples, queries, query_lens, labels = tensorToDevice(samples, queries, query_lens, labels)
   output = model(queries, query_lens, samples, debug=debug)
 
@@ -91,11 +87,18 @@ def trainBatch(model, optimizer, criterion, samples, queries, query_lens, labels
 
   return loss.item()
 
-def testBatch(model, criterion, samples, queries, query_lens, labels, debug=False):
+def testBatch(model, criterion, samples, queries, query_lens, labels, debug=False, query_lang=None):
   model.eval()
   with torch.no_grad():
     # Transfer data to gpu/cpu and pass through model
+    samples, queries, query_lens, labels = sortByQueryLen(samples, queries, query_lens, labels)
     samples, queries, query_lens, labels = tensorToDevice(samples, queries, query_lens, labels)
+    if debug:
+      for sample, query in zip(samples, queries):
+        plt.title(query_lang.decodeQuery(query.cpu()))
+        plt.imshow(sample.cpu().permute(1,2,0))
+        plt.show()
+
     output = model(queries, query_lens, samples, debug=debug)
 
     # Compute loss & accuracy
@@ -104,6 +107,10 @@ def testBatch(model, criterion, samples, queries, query_lens, labels, debug=Fals
     correct = pred.eq(labels.view_as(pred).round().long()).sum()
 
   return output, loss.item(), correct.item()
+
+def sortByQueryLen(samples, queries, query_lens, labels):
+  query_lens, idxs = torch.sort(query_lens, descending=True)
+  return samples[idxs], queries[idxs], query_lens, labels[idxs]
 
 def tensorToDevice(*tensors):
   return [tensor.to(device) for tensor in tensors]

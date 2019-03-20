@@ -17,18 +17,18 @@ class Decoder(nn.Module):
     self.input_dim = self.output_dim
 
     self.attn = nn.Linear(self.hidden_dim + self.input_dim, self.max_length)
-    self.attn_combine = nn.Linear(self.hidden_dim + self.input_dim, self.hidden_dim)
+    self.attn_combine = nn.Linear(self.max_length + self.input_dim, self.hidden_dim)
 
     self.lstm = nn.LSTM(self.hidden_dim, self.hidden_dim, num_layers=self.num_layers)
     self.fc1 = nn.Linear(self.hidden_dim, 128)
     self.fc2 = nn.Linear(128, self.output_dim)
 
-  def forward(self, init_out, encoder_outputs, debug=False):
-    batch_size = init_out.size(1)
-    attn_weights = F.softmax(self.attn(torch.cat((init_out, self.hidden[0]), dim=2)), dim=2)
-    attn_applied = torch.einsum('lbs,sbh->lbh', attn_weights, encoder_outputs)
+  def forward(self, prev_M, encoder_outputs, debug=False):
+    batch_size = prev_M.size(1)
+    attn_weights = F.softmax(self.attn(torch.cat((prev_M, self.hidden[0]), dim=2)), dim=2)
+    attn_applied = torch.einsum('lbs,sbh->lbs', attn_weights, encoder_outputs)
 
-    out = self.attn_combine(torch.cat((init_out, attn_applied), dim=2))
+    out = self.attn_combine(torch.cat((prev_M, attn_applied), dim=2))
     out, self.hidden = self.lstm(F.relu(out), self.hidden)
     out = F.relu(self.fc1(out[0]))
     out = self.fc2(out)
@@ -38,7 +38,7 @@ class Decoder(nn.Module):
 
     if debug: ipdb.set_trace()
     M = F.softmax(M, dim=1)
-    return M, attn_applied
+    return M, attn_applied.view(batch_size, -1)
 
   def resetHidden(self, batch_size):
     return (torch.zeros(self.num_layers, batch_size, self.hidden_dim).to(self.device),
