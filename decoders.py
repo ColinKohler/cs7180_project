@@ -13,8 +13,8 @@ class Decoder(nn.Module):
     self.num_layers = num_layers
     self.M_dim = M_dim
     self.x_dim = self.hidden_dim
-    self.output_dim = M_dim[0] * M_dim[1] + 1
-    self.input_dim = self.output_dim - 1
+    self.output_dim = M_dim[0] * M_dim[1]
+    self.input_dim = self.output_dim
     self.mt_norm = mt_norm
 
     self.attn = nn.Linear(self.hidden_dim + self.input_dim, self.max_length)
@@ -36,8 +36,7 @@ class Decoder(nn.Module):
     out = F.relu(self.fc1(out[0]))
     out = self.fc2(out)
 
-    M = (out[:,:-1]).view(batch_size, self.M_dim[0], self.M_dim[1])
-    x = (out[:,-1]).view(batch_size,1)
+    M = out.view(batch_size, self.M_dim[0], self.M_dim[1])
 
     if (self.mt_norm == 1):
       #   Train Loss:0.52322 | Test Loss:0.50811 | Test Acc:0.757:
@@ -52,7 +51,7 @@ class Decoder(nn.Module):
       M = (M / tots).view(batch_size, self.M_dim[0], self.M_dim[1])
 
     if debug: ipdb.set_trace()
-    return M, attn_applied.view(batch_size, -1), x
+    return M, attn_applied.view(batch_size, -1), torch.zeros((batch_size, 1))
 
   def resetHidden(self, batch_size):
     return (torch.zeros(self.num_layers, batch_size, self.hidden_dim).to(self.device),
