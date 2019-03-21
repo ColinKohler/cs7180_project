@@ -63,7 +63,7 @@ def train(config):
   pbar.close()
 
   samples, queries, query_lens, labels = test_loader.dataset[:1028]
-  output, loss, correct = testBatch(model, criterion, samples, queries, query_lens, labels, debug=False, query_lang=query_lang)
+  output, loss, correct = testBatch(model, criterion, samples, queries, query_lens, labels, debug=False)
   print(correct)
 
   plt.plot(test_accs)
@@ -76,6 +76,7 @@ def trainBatch(model, optimizer, criterion, samples, queries, query_lens, labels
   model.train()
   # Transfer data to gpu/cpu and pass through model
   samples, queries, query_lens, labels = sortByQueryLen(samples, queries, query_lens, labels)
+  samples, queries, query_lens, labels = tensorToDevice(samples, queries, query_lens, labels)
   output = model(queries, query_lens, samples, debug=debug)
 
   # Compute loss & step optimzer
@@ -86,7 +87,7 @@ def trainBatch(model, optimizer, criterion, samples, queries, query_lens, labels
 
   return loss.item()
 
-def testBatch(model, criterion, samples, queries, query_lens, labels, debug=False, query_lang=None):
+def testBatch(model, criterion, samples, queries, query_lens, labels, debug=False):
   model.eval()
   with torch.no_grad():
     # Transfer data to gpu/cpu and pass through model
@@ -102,6 +103,7 @@ def testBatch(model, criterion, samples, queries, query_lens, labels, debug=Fals
   model.eval()
   with torch.no_grad():
     # Transfer data to gpu/cpu and pass through model
+    samples, queries, query_lens, labels = sortByQueryLen(samples, queries, query_lens, labels)
     samples, queries, query_lens, labels = tensorToDevice(samples, queries, query_lens, labels)
     output = model(queries, query_lens, samples, debug=debug)
 

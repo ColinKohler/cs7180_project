@@ -11,7 +11,7 @@ from encoders import QueryEncoder, ContextEncoder
 from decoders import Decoder
 
 class RNMN(nn.Module):
-  def __init__(self, query_size, hidden_size, device, mt_norm = 1, comp_length = 5, comp_stop_type = 1):
+  def __init__(self, query_size, map_dim, hidden_size, device, mt_norm=1, comp_length=5, comp_stop_type=1):
     super(RNMN, self).__init__()
     self.device = device
     self.query_size = query_size
@@ -22,8 +22,8 @@ class RNMN(nn.Module):
     self.comp_stop_type = comp_stop_type
 
     # Create attention and answer modules
-    self.find = Find(self.context_size, num_kernels=map_dim, text_dim=7)
-    self.relocate = Relocate(self.context_size, num_kernels=map_dim, text_dim=7)
+    self.find = Find(self.context_size, num_kernels=map_dim, text_dim=3)
+    self.relocate = Relocate(self.context_size, num_kernels=map_dim, text_dim=3)
     self.exist = Exist(self.context_size)
     self.attention_modules = [And(), self.find, self.relocate]
     self.num_att_modules = len(self.attention_modules)
@@ -37,7 +37,7 @@ class RNMN(nn.Module):
     # Create decoder
     self.M_size = (self.num_att_modules, sum([m.num_attention_maps for m in self.attention_modules + self.answer_modules]))
     self.x_size = 256
-    max_len = 7
+    max_len = 3
     self.decoder = Decoder(max_len, self.hidden_size, self.M_size, self.x_size, self.device, num_layers=1, mt_norm=mt_norm)
 
   def forward(self, query, query_len, context, debug=False):
@@ -111,7 +111,7 @@ class RNMN(nn.Module):
     # Encode each word in the query
     self.query_encoder.resetHidden(batch_size)
     if debug: ipdb.set_trace()
-    outputs, (hidden_states, cell_states)  = self.query_encoder(query, query_len)
+    outputs, (hidden_states, cell_states) = self.query_encoder(query, query_len)
 
     return outputs, (hidden_states, cell_states)
 

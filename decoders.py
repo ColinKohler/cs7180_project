@@ -14,7 +14,7 @@ class Decoder(nn.Module):
     self.M_dim = M_dim
     self.x_dim = self.hidden_dim
     self.output_dim = M_dim[0] * M_dim[1] + 1
-    self.input_dim = self.output_dim
+    self.input_dim = self.output_dim - 1
     self.mt_norm = mt_norm
 
     self.attn = nn.Linear(self.hidden_dim + self.input_dim, self.max_length)
@@ -31,7 +31,7 @@ class Decoder(nn.Module):
     # TODO: does this make any sort of sense whatsoever (it works?)
     attn_applied = F.relu(torch.einsum('lbs,sbh->lbs', attn_weights, encoder_outputs))
 
-    out = self.attn_combine(torch.cat((init_out, attn_applied), dim=2))
+    out = self.attn_combine(torch.cat((prev_M, attn_applied), dim=2))
     out, self.hidden = self.lstm(F.relu(out), self.hidden)
     out = F.relu(self.fc1(out[0]))
     out = self.fc2(out)
