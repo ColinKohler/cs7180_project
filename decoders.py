@@ -24,9 +24,10 @@ class Decoder(nn.Module):
     self.fc2 = nn.Linear(128, self.output_dim)
 
   def forward(self, prev_M, encoder_outputs, debug=False):
+    if debug: ipdb.set_trace()
     batch_size = prev_M.size(1)
     attn_weights = F.softmax(self.attn(torch.cat((prev_M, self.hidden[0]), dim=2)), dim=2)
-    attn_applied = torch.einsum('lbs,sbh->lbs', attn_weights, encoder_outputs)
+    attn_applied = F.relu(torch.einsum('lbs,sbh->lbs', attn_weights, encoder_outputs))
 
     out = self.attn_combine(torch.cat((prev_M, attn_applied), dim=2))
     out, self.hidden = self.lstm(F.relu(out), self.hidden)

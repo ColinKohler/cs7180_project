@@ -11,19 +11,20 @@ from encoders import QueryEncoder, ContextEncoder
 from decoders import Decoder
 
 class RNMN(nn.Module):
-  def __init__(self, query_size, hidden_size, device):
+  def __init__(self, query_size, hidden_size, map_dim, device):
     super(RNMN, self).__init__()
     self.device = device
     self.query_size = query_size
     self.hidden_size = hidden_size
+    self.map_dim = map_dim
     self.context_size = [64, 6, 6]
 
     # Create attention and answer modules
-    self.find = Find(self.context_size, text_dim=3)
-    # self.relocate = Relocate(self.context_size)
+    self.find = Find(self.context_size, num_kernels=map_dim, text_dim=7)
+    self.relocate = Relocate(self.context_size, num_kernels=map_dim, text_dim=7)
     self.exist = Exist(self.context_size)
 
-    self.attention_modules = [And(), self.find]
+    self.attention_modules = [And(), self.find, self.relocate]
     self.num_att_modules = len(self.attention_modules)
     self.answer_modules = [self.exist]
     [module.to(self.device) for module in self.attention_modules + self.answer_modules]
@@ -35,7 +36,7 @@ class RNMN(nn.Module):
     # Create decoder
     self.M_size = (self.num_att_modules, sum([m.num_attention_maps for m in self.attention_modules + self.answer_modules]))
     self.x_size = 256
-    max_len = 3
+    max_len = 7
     self.decoder = Decoder(max_len, self.hidden_size, self.M_size, self.x_size, self.device, num_layers=1)
 
   def forward(self, query, query_len, context, debug=False):
@@ -52,7 +53,7 @@ class RNMN(nn.Module):
 
     # TODO: This for loop should be replaced with some sort of thresholding junk
     if debug: ipdb.set_trace()
-    for t in range(2):
+    for t in range(5):
       self.M_t, self.x_t = self.decoder(self.M_t.view(batch_size, self.M_size[0]*self.M_size[1], 1).permute(2,0,1), encoded_query, debug=debug)
       self.a_t, out = self.forward_1t(encoded_context, debug=debug)
 

@@ -20,10 +20,10 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def train(config):
   # Load dataset
-  query_lang, train_loader, test_loader = dataset_loader.createScalableShapesDataLoader('v1', batch_size=config.batch_size)
+  query_lang, train_loader, test_loader = dataset_loader.createScalableShapesDataLoader('v5' , batch_size=config.batch_size)
 
   # Init model
-  model = RNMN(query_lang.num_words, config.hidden_size, device).to(device)
+  model = RNMN(query_lang.num_words, config.hidden_size, config.map_dim, device).to(device)
   if config.weight_decay == 0:
     optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
   else:
@@ -63,11 +63,12 @@ def train(config):
   # Close progress bar
   pbar.close()
 
-  samples, queries, query_lens, labels = test_loader.dataset[:8]
-  output, loss, correct = testBatch(model, criterion, samples, queries, query_lens, labels, debug=True, query_lang=query_lang)
-  print(output.argmax(dim=1).cpu())
-  print(labels.round().t().long().cpu().squeeze())
+  samples, queries, query_lens, labels = test_loader.dataset[:1028]
+  output, loss, correct = testBatch(model, criterion, samples, queries, query_lens, labels, debug=False, query_lang=query_lang)
   print(correct)
+
+  plt.plot(test_accs)
+  plt.show()
 
 def test(config):
   pass
@@ -93,11 +94,11 @@ def testBatch(model, criterion, samples, queries, query_lens, labels, debug=Fals
     # Transfer data to gpu/cpu and pass through model
     samples, queries, query_lens, labels = sortByQueryLen(samples, queries, query_lens, labels)
     samples, queries, query_lens, labels = tensorToDevice(samples, queries, query_lens, labels)
-    if debug:
-      for sample, query in zip(samples, queries):
-        plt.title(query_lang.decodeQuery(query.cpu()))
-        plt.imshow(sample.cpu().permute(1,2,0))
-        plt.show()
+    # if debug:
+    #   for sample, query in zip(samples, queries):
+    #     plt.title(query_lang.decodeQuery(query.cpu()))
+    #     plt.imshow(sample.cpu().permute(1,2,0))
+    #     plt.show()
 
     output = model(queries, query_lens, samples, debug=debug)
 
@@ -125,6 +126,8 @@ if __name__ == '__main__':
       help='L2 weight decay parameter for optimizr')
   parser.add_argument('--hidden_size', type=int, default=256,
       help='Number of units in the LSTM layers in the query encoder/decoders')
+  parser.add_argument('--map_dim', type=int, default=64,
+      help='Number of kernels for mapping in the submodules')
   parser.add_argument('--batch_size', type=int, default=256,
       help='Minibatch size for data loaders')
   parser.add_argument('--seed', type=int, default=None,
