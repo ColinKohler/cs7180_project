@@ -72,7 +72,7 @@ def train(config):
   # plt.title(query_lang.decodeQuery(queries[0]))
   # plt.imshow(samples[0].permute(1,2,0))
   # plt.show()
-  output, loss, correct = testBatch(model, criterion, samples, queries, query_lens, labels, debug=False)
+  output, loss, correct = testBatch(model, criterion, samples, queries, query_lens, labels, debug=True)
   # print(output.argmax(dim=1).cpu())
   # print(labels.round().t().long().cpu().squeeze())
   print(correct)
@@ -115,7 +115,7 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument('epochs', type=int, default=100,
       help='Number of epochs to train/test for')
-  parser.add_argument('dataset', type=str, default='v1',
+  parser.add_argument('--dataset', type=str, default='v1',
       help='folder to read in dataset from')
   parser.add_argument('--lr', type=float, default=1e-3,
       help='Learning rate for the model')

@@ -17,7 +17,7 @@ class RNMN(nn.Module):
     self.query_size = query_size
     self.hidden_size = hidden_size
     self.context_size = [64, 6, 6]
-    self.comp_length = 5
+    self.comp_length = comp_length
     self.comp_stop_type = comp_stop_type
 
     # Create attention and answer modules
@@ -68,6 +68,8 @@ class RNMN(nn.Module):
     if (self.comp_stop_type == 1):
       self.stop_mask = F.softmax(self.stop_mask,dim = 1)
       out = torch.einsum('bt,bti->bi',self.stop_mask,self.outs)
+
+    if debug: ipdb.set_trace()
 
     return F.log_softmax(out, dim=1)
 
