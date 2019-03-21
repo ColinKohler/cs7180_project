@@ -37,7 +37,7 @@ class Id(nn.Module):
 ###########################################################################################################################################
 
 class Find(nn.Module):
-  def __init__(self, context_size, num_kernels=500, text_dim=256):
+  def __init__(self, context_size, num_kernels=64, text_dim=256):
     super(Find, self).__init__()
     self.num_attention_maps = 0
 
@@ -55,7 +55,7 @@ class Find(nn.Module):
     batch_size = context.size(0)
     text_mapped = self.fc1(text).view(batch_size, self.num_kernels, 1, 1)
     context_mapped = self.conv1(context)
-    eltwise_mult = F.normalize(text_mapped  * context_mapped, dim=3)
+    eltwise_mult = text_mapped  * context_mapped
     return F.relu(self.conv2(eltwise_mult))
 
 class Relocate(nn.Module):
@@ -84,7 +84,7 @@ class Relocate(nn.Module):
     attention = torch.sum(context * attention_softmax, dim=[2,3])
     attention_mapped = self.fc2(attention).view(batch_size, self.num_kernels, 1, 1)
 
-    eltwise_mult = F.normalize(context_mapped * text_mapped * attention_mapped, dim=3)
+    eltwise_mult = context_mapped * text_mapped * attention_mapped
     return F.relu(self.conv2(eltwise_mult))
 
 ###########################################################################################################################################

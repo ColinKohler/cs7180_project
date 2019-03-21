@@ -19,11 +19,10 @@ from rnmn import RNMN
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def train(config):
-  # Load dataset
-  query_lang, train_loader, test_loader = dataset_loader.createScalableShapesDataLoader('v5' , batch_size=config.batch_size)
+  query_lang, train_loader, test_loader = dataset_loader.createScalableShapesDataLoader(config.dataset, batch_size=config.batch_size)
 
   # Init model
-  model = RNMN(query_lang.num_words, config.hidden_size, config.map_dim, device).to(device)
+  model = RNMN(query_lang.num_words, config.hidden_size, config.map_dim, device, config.mt_norm, config.comp_length, config.comp_stop).to(device)
   if config.weight_decay == 0:
     optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
   else:
@@ -42,7 +41,7 @@ def train(config):
       train_loss += trainBatch(model, optimizer, criterion, samples, queries,
                                query_lens, labels, debug=config.debug)
 
-	  # Test for a single epoch iterating over the minibatches
+    # Test for a single epoch iterating over the minibatches
     test_loss, test_correct = 0, 0
     for i, (samples, queries, query_lens, labels) in enumerate(test_loader):
       _, batch_loss, batch_correct = testBatch(model, criterion, samples, queries,
@@ -77,7 +76,6 @@ def trainBatch(model, optimizer, criterion, samples, queries, query_lens, labels
   model.train()
   # Transfer data to gpu/cpu and pass through model
   samples, queries, query_lens, labels = sortByQueryLen(samples, queries, query_lens, labels)
-  samples, queries, query_lens, labels = tensorToDevice(samples, queries, query_lens, labels)
   output = model(queries, query_lens, samples, debug=debug)
 
   # Compute loss & step optimzer
@@ -100,6 +98,11 @@ def testBatch(model, criterion, samples, queries, query_lens, labels, debug=Fals
     #     plt.imshow(sample.cpu().permute(1,2,0))
     #     plt.show()
 
+def testBatch(model, criterion, samples, queries, query_lens, labels, debug=False):
+  model.eval()
+  with torch.no_grad():
+    # Transfer data to gpu/cpu and pass through model
+    samples, queries, query_lens, labels = tensorToDevice(samples, queries, query_lens, labels)
     output = model(queries, query_lens, samples, debug=debug)
 
     # Compute loss & accuracy
@@ -120,6 +123,8 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument('epochs', type=int, default=100,
       help='Number of epochs to train/test for')
+  parser.add_argument('--dataset', type=str, default='v1',
+      help='folder to read in dataset from')
   parser.add_argument('--lr', type=float, default=1e-3,
       help='Learning rate for the model')
   parser.add_argument('--weight_decay', type=float, default=1e-4,
@@ -138,6 +143,12 @@ if __name__ == '__main__':
       help='Enter test mode. Must specify a model to load')
   parser.add_argument('--debug', default=False, action='store_true',
       help='Enter debugging mode')
+  parser.add_argument('--mt_norm', type=int, default=1,
+      help='M_t matrix normalization (0=None, 1=row softmax (default), 2=2dsoftmax, 3=rowsum clamped [0,1]')
+  parser.add_argument('--comp_length', type=int, default=5,
+      help='maximum number of compositions (default = 5)')
+  parser.add_argument('--comp_stop', type=int, default=1,
+      help='method for selecting output timestep (0=last, 1=learned_weighted_avg (default))')
 
   args = parser.parse_args()
   if args.seed: torch.manual_seed(args.seed) # 9=good

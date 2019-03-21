@@ -11,19 +11,20 @@ from encoders import QueryEncoder, ContextEncoder
 from decoders import Decoder
 
 class RNMN(nn.Module):
-  def __init__(self, query_size, hidden_size, map_dim, device):
+  def __init__(self, query_size, hidden_size, device, mt_norm = 1, comp_length = 5, comp_stop_type = 1):
     super(RNMN, self).__init__()
     self.device = device
     self.query_size = query_size
     self.hidden_size = hidden_size
     self.map_dim = map_dim
     self.context_size = [64, 6, 6]
+    self.comp_length = comp_length
+    self.comp_stop_type = comp_stop_type
 
     # Create attention and answer modules
     self.find = Find(self.context_size, num_kernels=map_dim, text_dim=7)
     self.relocate = Relocate(self.context_size, num_kernels=map_dim, text_dim=7)
     self.exist = Exist(self.context_size)
-
     self.attention_modules = [And(), self.find, self.relocate]
     self.num_att_modules = len(self.attention_modules)
     self.answer_modules = [self.exist]
@@ -37,7 +38,7 @@ class RNMN(nn.Module):
     self.M_size = (self.num_att_modules, sum([m.num_attention_maps for m in self.attention_modules + self.answer_modules]))
     self.x_size = 256
     max_len = 7
-    self.decoder = Decoder(max_len, self.hidden_size, self.M_size, self.x_size, self.device, num_layers=1)
+    self.decoder = Decoder(max_len, self.hidden_size, self.M_size, self.x_size, self.device, num_layers=1, mt_norm=mt_norm)
 
   def forward(self, query, query_len, context, debug=False):
     batch_size = query.size(0)
@@ -51,12 +52,24 @@ class RNMN(nn.Module):
     self.a_t = torch.randn((batch_size, self.M_size[1], self.context_size[1], self.context_size[2]), requires_grad=True, device=self.device)
     self.M_t = torch.ones((batch_size, self.M_size[0], self.M_size[1]), requires_grad=True, device=self.device)
 
+    self.stop_mask = torch.zeros((batch_size, self.comp_length), device=self.device)
+    self.outs = torch.zeros((batch_size, self.comp_length, 2), device=self.device)
+
     # TODO: This for loop should be replaced with some sort of thresholding junk
     if debug: ipdb.set_trace()
-    for t in range(5):
-      self.M_t, self.x_t = self.decoder(self.M_t.view(batch_size, self.M_size[0]*self.M_size[1], 1).permute(2,0,1), encoded_query, debug=debug)
+    for t in range(self.comp_length):
+      self.M_t, self.x_t, stop_bits = self.decoder(self.M_t.view(batch_size, self.M_size[0]*self.M_size[1], 1).permute(2,0,1), encoded_query, debug=debug)
       self.a_t, out = self.forward_1t(encoded_context, debug=debug)
 
+      if (self.comp_stop_type == 1):
+        self.stop_mask[:,t] = stop_bits.squeeze(1)
+        self.outs[:,t,:] = out
+
+    if (self.comp_stop_type == 1):
+      self.stop_mask = F.softmax(self.stop_mask,dim = 1)
+      out = torch.einsum('bt,bti->bi',self.stop_mask,self.outs)
+
+    if debug: ipdb.set_trace()
     return F.log_softmax(out, dim=1)
 
   def forward_1t(self, encoded_context, debug=False):
@@ -110,6 +123,6 @@ class RNMN(nn.Module):
 
   def printM(self, M, round_n=3):
     M = M.t()
-    print(' AND,  FIND')
-    for i, module in enumerate(['And1', 'And2', 'Exist']):
+    print('  OR,   AND,  ID,   FIND, RELOC')
+    for i, module in enumerate(['Or1', 'Or2', 'And1', 'And2', 'Id', 'Reloc', 'Exist']):
       print('{}: {}'.format(np.round(M[i].cpu().numpy(), 3), module))
