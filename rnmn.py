@@ -110,7 +110,7 @@ class RNMN(nn.Module):
 
     # Encode each word in the query
     self.query_encoder.resetHidden(batch_size)
-    if debug: ipdb.set_trace()
+    #if debug: ipdb.set_trace()
     outputs, (hidden_states, cell_states) = self.query_encoder(query, query_len)
 
     return outputs, (hidden_states, cell_states)
