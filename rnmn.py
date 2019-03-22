@@ -11,7 +11,7 @@ from encoders import QueryEncoder, ContextEncoder
 from decoders import Decoder
 
 class RNMN(nn.Module):
-  def __init__(self, query_size, map_dim, hidden_size, device, mt_norm=1, comp_length=5, comp_stop_type=1):
+  def __init__(self, query_size, map_dim, hidden_size, device, mt_norm=1, comp_length=5, comp_stop_type=1, query_max_len=3):
     super(RNMN, self).__init__()
     self.device = device
     self.query_size = query_size
@@ -20,12 +20,13 @@ class RNMN(nn.Module):
     self.context_size = [64, 6, 6]
     self.comp_length = comp_length
     self.comp_stop_type = comp_stop_type
+    self.query_max_len = query_max_len
 
     # Create attention and answer modules
-    self.find = Find(self.context_size, num_kernels=map_dim, text_dim=3)
-    self.relocate = Relocate(self.context_size, num_kernels=map_dim, text_dim=3)
+    self.find = Find(self.context_size, num_kernels=map_dim, text_dim=self.query_max_len)
+    self.relocate = Relocate(self.context_size, num_kernels=map_dim, text_dim=self.query_max_len)
     self.exist = Exist(self.context_size)
-    self.attention_modules = [And(), self.find, self.relocate]
+    self.attention_modules = [And(), Or(), Id(), self.find, self.relocate]  #
     self.num_att_modules = len(self.attention_modules)
     self.answer_modules = [self.exist]
     [module.to(self.device) for module in self.attention_modules + self.answer_modules]
@@ -37,8 +38,7 @@ class RNMN(nn.Module):
     # Create decoder
     self.M_size = (self.num_att_modules, sum([m.num_attention_maps for m in self.attention_modules + self.answer_modules]))
     self.x_size = 256
-    max_len = 3
-    self.decoder = Decoder(max_len, self.hidden_size, self.M_size, self.x_size, self.device, num_layers=1, mt_norm=mt_norm)
+    self.decoder = Decoder(self.query_max_len, self.hidden_size, self.M_size, self.x_size, self.device, num_layers=1, mt_norm=mt_norm)
 
   def forward(self, query, query_len, context, debug=False):
     batch_size = query.size(0)

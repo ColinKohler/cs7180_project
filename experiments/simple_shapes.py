@@ -19,10 +19,10 @@ from rnmn import RNMN
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def train(config):
-  query_lang, train_loader, test_loader = dataset_loader.createScalableShapesDataLoader(config.dataset, batch_size=config.batch_size)
+  query_lang, train_loader, test_loader, query_max_len = dataset_loader.createScalableShapesDataLoader(config.dataset, batch_size=config.batch_size)
 
   # Init model
-  model = RNMN(query_lang.num_words, config.hidden_size, config.map_dim, device, config.mt_norm, config.comp_length, config.comp_stop).to(device)
+  model = RNMN(query_lang.num_words, config.hidden_size, config.map_dim, device, config.mt_norm, config.comp_length, config.comp_stop, query_max_len).to(device)
   if config.weight_decay == 0:
     optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
   else:

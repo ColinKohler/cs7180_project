@@ -99,7 +99,7 @@ def createScalableShapesDataLoader(dataset, batch_size=64, rebalanced=True):
   test_dataset = data_utils.TensorDataset(test_samples, test_queries, test_query_lens, test_labels)
   test_loader = data_utils.DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
 
-  return query_lang, train_loader, test_loader
+  return query_lang, train_loader, test_loader, max_len
 
 def convertNumpyToTorch(*arrays):
   return [torch.from_numpy(array) for array in arrays]
