@@ -28,6 +28,7 @@ class Decoder(nn.Module):
     if debug: ipdb.set_trace()
     batch_size = prev_M.size(1)
     attn_weights = F.softmax(self.attn(torch.cat((prev_M, self.hidden[0]), dim=2)), dim=2)
+    # TODO: Mask the padded parts out to 0.
     # TODO: does this make any sort of sense whatsoever (it works?)
     attn_applied = F.relu(torch.einsum('lbs,sbh->lbs', attn_weights, encoder_outputs))
 

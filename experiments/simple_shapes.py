@@ -19,7 +19,7 @@ from rnmn import RNMN
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def train(config):
-  query_lang, train_loader, test_loader = dataset_loader.createScalableShapesDataLoader(config.dataset, batch_size=config.batch_size)
+  query_lang, train_loader, test_loader, query_max_len = dataset_loader.createScalableShapesDataLoader(config.dataset, batch_size=config.batch_size)
 
   # Init model
   model = RNMN(query_lang.num_words, config.embed_size, config.num_layers, config.hidden_size, config.map_dim, query_lang.max_len, device, config.mt_norm, config.comp_length, config.comp_stop).to(device)

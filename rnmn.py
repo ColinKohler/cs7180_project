@@ -28,7 +28,7 @@ class RNMN(nn.Module):
     self.find = Find(self.context_size, num_kernels=map_dim, text_dim=self.max_query_len)
     self.relocate = Relocate(self.context_size, num_kernels=map_dim, text_dim=self.max_query_len)
     self.exist = Exist(self.context_size)
-    self.attention_modules = [And(), self.find, self.relocate]
+    self.attention_modules = [And(), Or(), Id(), self.find, self.relocate]  #
     self.num_att_modules = len(self.attention_modules)
     self.answer_modules = [self.exist]
     [module.to(self.device) for module in self.attention_modules + self.answer_modules]
