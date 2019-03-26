@@ -51,7 +51,7 @@ class Decoder(nn.Module):
       M = (M / tots).view(batch_size, self.M_dim[0], self.M_dim[1])
 
     if debug: ipdb.set_trace()
-    return M, attn_applied.view(batch_size, -1), torch.zeros((batch_size, 1))
+    return M, attn_weights, torch.zeros((batch_size, 1))
 
   def resetHidden(self, batch_size):
     return (torch.zeros(self.num_layers, batch_size, self.hidden_dim).to(self.device),

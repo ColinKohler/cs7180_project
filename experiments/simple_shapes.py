@@ -22,7 +22,7 @@ def train(config):
   query_lang, train_loader, test_loader = dataset_loader.createScalableShapesDataLoader(config.dataset, batch_size=config.batch_size)
 
   # Init model
-  model = RNMN(query_lang.num_words, config.hidden_size, config.map_dim, device, config.mt_norm, config.comp_length, config.comp_stop).to(device)
+  model = RNMN(query_lang.num_words, config.embed_size, config.num_layers, config.hidden_size, config.map_dim, query_lang.max_len, device, config.mt_norm, config.comp_length, config.comp_stop).to(device)
   if config.weight_decay == 0:
     optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
   else:
@@ -63,11 +63,13 @@ def train(config):
   pbar.close()
 
   samples, queries, query_lens, labels = test_loader.dataset[:1028]
-  output, loss, correct = testBatch(model, criterion, samples, queries, query_lens, labels, debug=False)
+  output, loss, correct = testBatch(model, criterion, samples, queries, query_lens, labels, debug=True, query_lang=query_lang)
   print(correct)
 
   plt.plot(test_accs)
   plt.show()
+
+  import ipdb; ipdb.set_trace()
 
 def test(config):
   pass
@@ -87,24 +89,19 @@ def trainBatch(model, optimizer, criterion, samples, queries, query_lens, labels
 
   return loss.item()
 
-def testBatch(model, criterion, samples, queries, query_lens, labels, debug=False):
+def testBatch(model, criterion, samples, queries, query_lens, labels, debug=False, query_lang=None):
   model.eval()
   with torch.no_grad():
     # Transfer data to gpu/cpu and pass through model
     samples, queries, query_lens, labels = sortByQueryLen(samples, queries, query_lens, labels)
     samples, queries, query_lens, labels = tensorToDevice(samples, queries, query_lens, labels)
-    # if debug:
-    #   for sample, query in zip(samples, queries):
-    #     plt.title(query_lang.decodeQuery(query.cpu()))
-    #     plt.imshow(sample.cpu().permute(1,2,0))
-    #     plt.show()
+    if debug:
+      for i, (sample, query) in enumerate(zip(samples[:10], queries[:10])):
+        plt.title(query_lang.decodeQuery(query.cpu()))
+        plt.imshow(sample.cpu().permute(1,2,0))
+        plt.savefig('{}.png'.format(i))
+        plt.close()
 
-def testBatch(model, criterion, samples, queries, query_lens, labels, debug=False):
-  model.eval()
-  with torch.no_grad():
-    # Transfer data to gpu/cpu and pass through model
-    samples, queries, query_lens, labels = sortByQueryLen(samples, queries, query_lens, labels)
-    samples, queries, query_lens, labels = tensorToDevice(samples, queries, query_lens, labels)
     output = model(queries, query_lens, samples, debug=debug)
 
     # Compute loss & accuracy
@@ -131,8 +128,12 @@ if __name__ == '__main__':
       help='Learning rate for the model')
   parser.add_argument('--weight_decay', type=float, default=1e-4,
       help='L2 weight decay parameter for optimizr')
+  parser.add_argument('--embed_size', type=int, default=300,
+      help='Size of the query embedding')
   parser.add_argument('--hidden_size', type=int, default=256,
       help='Number of units in the LSTM layers in the query encoder/decoders')
+  parser.add_argument('--num_layers', type=int, default=1,
+      help='Number of layers in the LSTMs in the query encoder/decoders')
   parser.add_argument('--map_dim', type=int, default=64,
       help='Number of kernels for mapping in the submodules')
   parser.add_argument('--batch_size', type=int, default=256,
