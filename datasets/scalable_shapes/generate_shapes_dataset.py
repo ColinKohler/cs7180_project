@@ -68,18 +68,18 @@ def main(args):
 
   # Save dataset
   if not args.debug:
-    np.save('./data/v3/samples.npy', samples)
-    np.save('./data/v3/queries.npy', queries)
-    np.save('./data/v3/labels.npy', labels)
+    np.save('./data/v4/samples.npy', samples)
+    np.save('./data/v4/queries.npy', queries)
+    np.save('./data/v4/labels.npy', labels)
 
 def generateQuery():
   ''' Generate query by combining all possible query parts '''
-  if npr.rand() > 0.1:
-    prop_1 = q_ast.generateRandomProperty()
-    prop_2 = q_ast.generateRandomProperty()
-    query = q_ast.Is(q_ast.generateRandomRelational(prop_1, prop_2))
-  else:
-    query = q_ast.Is(q_ast.generateRandomProperty())
+  # if npr.rand() > 0.1:
+  #   prop_1 = q_ast.generateRandomProperty()
+  #   prop_2 = q_ast.generateRandomProperty()
+  #   query = q_ast.Is(q_ast.generateRandomRelational(prop_1, prop_2))
+  # else:
+  query = q_ast.Is(q_ast.generateRandomProperty())
 
   return query
 

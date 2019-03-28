@@ -25,13 +25,15 @@ class RNMN(nn.Module):
     self.max_query_len = max_query_len
 
     # Create attention and answer modules
-    self.find = Find(self.context_size, num_kernels=map_dim, text_dim=self.embed_size)
-    self.relocate = Relocate(self.context_size, num_kernels=map_dim, text_dim=self.embed_size)
+    self.find = Find(self.context_size, num_kernels=map_dim, text_dim=1)
+    self.relocate = Relocate(self.context_size, num_kernels=map_dim, text_dim=1)
     self.exist = Exist(self.context_size)
-    self.attention_modules = [And(), self.find , self.relocate]
+    self.attention_modules = [And(), self.find, self.relocate]
     self.num_att_modules = len(self.attention_modules)
     self.answer_modules = [self.exist]
     [module.to(self.device) for module in self.attention_modules + self.answer_modules]
+
+    self.query_combine = nn.Linear(self.max_query_len*self.embed_size, 1)
 
     # Create query and context encoders
     self.query_encoder = QueryEncoder(self.query_size, self.embed_size, self.hidden_size, self.device, num_layers=self.num_layers, max_query_len=self.max_query_len)
@@ -59,7 +61,7 @@ class RNMN(nn.Module):
     for t in range(self.comp_length):
       if debug: ipdb.set_trace()
       self.M_t, attn, stop_bits = self.decoder(self.M_t.view(batch_size, self.M_size[0]*self.M_size[1], 1).permute(2,0,1), encoded_query, debug=debug)
-      self.x_t = torch.einsum('dbe,ebn->dbn', attn, embedded_query)
+      self.x_t = self.query_combine(torch.einsum('dbe,ebn->ben', attn, embedded_query).view(batch_size, -1))
       self.a_t, out = self.forward_1t(encoded_context, debug=debug)
 
       if (self.comp_stop_type == 1):

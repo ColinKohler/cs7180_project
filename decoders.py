@@ -17,7 +17,7 @@ class Decoder(nn.Module):
     self.mt_norm = mt_norm
 
     self.attn = nn.Linear(self.hidden_dim + self.input_dim, self.max_length)
-    self.attn_combine = nn.Linear(self.max_length + self.input_dim, self.hidden_dim)
+    self.attn_combine = nn.Linear(self.hidden_dim + self.input_dim, self.hidden_dim)
 
     self.dropout = nn.Dropout(dropout_prob)
     self.lstm = nn.LSTM(self.hidden_dim, self.hidden_dim, num_layers=self.num_layers)
@@ -31,7 +31,7 @@ class Decoder(nn.Module):
     attn_weights = F.softmax(self.attn(torch.cat((prev_M, self.hidden[0]), dim=2)), dim=2)
     # TODO: Mask the padded parts out to 0.
     # TODO: does this make any sort of sense whatsoever (it works?)
-    attn_applied = F.relu(torch.einsum('lbs,sbh->lbs', attn_weights, encoder_outputs))
+    attn_applied = F.relu(torch.einsum('lbs,sbh->lbh', attn_weights, encoder_outputs))
 
     out = self.attn_combine(torch.cat((prev_M, attn_applied), dim=2))
     out, self.hidden = self.lstm(F.relu(out), self.hidden)

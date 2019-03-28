@@ -53,7 +53,7 @@ class Find(nn.Module):
 
   def forward(self, context, text):
     batch_size = context.size(0)
-    text_mapped = F.relu(self.fc1(text)).view(batch_size, self.num_kernels, 1, 1)
+    text_mapped = F.relu(self.fc1(text.view(batch_size, -1))).view(batch_size, self.num_kernels, 1, 1)
     context_mapped = F.relu(self.conv1(context))
     eltwise_mult = F.normalize(text_mapped  * context_mapped)
     return F.sigmoid(self.conv2(eltwise_mult))
@@ -76,7 +76,7 @@ class Relocate(nn.Module):
 
   def forward(self, attention, context, text):
     batch_size = attention.shape[0]
-    text_mapped = F.relu(self.fc1(text).view(batch_size, self.num_kernels, 1, 1))
+    text_mapped = F.relu(self.fc1(text.view(batch_size, -1)).view(batch_size, self.num_kernels, 1, 1))
     context_mapped = F.relu(self.conv1(context))
 
     attention_softmax = F.softmax(attention.view(batch_size, -1), dim=1)
