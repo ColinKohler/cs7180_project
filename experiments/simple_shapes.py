@@ -22,7 +22,8 @@ def train(config):
   query_lang, train_loader, test_loader, query_max_len = dataset_loader.createScalableShapesDataLoader(config.dataset, batch_size=config.batch_size)
 
   # Init model
-  model = RNMN(query_lang.num_words, config.embed_size, config.num_layers, config.hidden_size, config.map_dim, query_lang.max_len, device, config.mt_norm, config.comp_length, config.comp_stop).to(device)
+  model = RNMN(query_lang, config.embed_dim, config.num_layers, config.lstm_hidden_dim, config.map_dim,
+               config.text_dim, device, config.mt_norm, config.comp_length, config.comp_stop).to(device)
   if config.weight_decay == 0:
     optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
   else:
@@ -62,14 +63,11 @@ def train(config):
   # Close progress bar
   pbar.close()
 
-  samples, queries, query_lens, labels = test_loader.dataset[:1028]
-  output, loss, correct = testBatch(model, criterion, samples, queries, query_lens, labels, debug=True, query_lang=query_lang)
-  print(correct)
+  samples, queries, query_lens, labels = test_loader.dataset[:1]
+  output, loss, correct = testBatch(model, criterion, samples, queries, query_lens, labels, vis=True)
 
   plt.plot(test_accs)
   plt.show()
-
-  import ipdb; ipdb.set_trace()
 
 def test(config):
   pass
@@ -89,20 +87,13 @@ def trainBatch(model, optimizer, criterion, samples, queries, query_lens, labels
 
   return loss.item()
 
-def testBatch(model, criterion, samples, queries, query_lens, labels, debug=False, query_lang=None):
+def testBatch(model, criterion, samples, queries, query_lens, labels, debug=False, vis=False):
   model.eval()
   with torch.no_grad():
     # Transfer data to gpu/cpu and pass through model
     samples, queries, query_lens, labels = sortByQueryLen(samples, queries, query_lens, labels)
     samples, queries, query_lens, labels = tensorToDevice(samples, queries, query_lens, labels)
-    if debug:
-      for i, (sample, query) in enumerate(zip(samples[:10], queries[:10])):
-        plt.title(query_lang.decodeQuery(query.cpu()))
-        plt.imshow(sample.cpu().permute(1,2,0))
-        plt.savefig('{}.png'.format(i))
-        plt.close()
-
-    output = model(queries, query_lens, samples, debug=debug)
+    output = model(queries, query_lens, samples, vis=vis, debug=debug)
 
     # Compute loss & accuracy
     loss = criterion(output, labels.squeeze(1).long())
@@ -126,16 +117,18 @@ if __name__ == '__main__':
       help='folder to read in dataset from')
   parser.add_argument('--lr', type=float, default=1e-3,
       help='Learning rate for the model')
-  parser.add_argument('--weight_decay', type=float, default=1e-4,
+  parser.add_argument('--weight_decay', type=float, default=0,
       help='L2 weight decay parameter for optimizr')
-  parser.add_argument('--embed_size', type=int, default=300,
-      help='Size of the query embedding')
-  parser.add_argument('--hidden_size', type=int, default=256,
+  parser.add_argument('--embed_dim', type=int, default=300,
+      help='Dimension of the query embedding')
+  parser.add_argument('--lstm_hidden_dim', type=int, default=256,
       help='Number of units in the LSTM layers in the query encoder/decoders')
   parser.add_argument('--num_layers', type=int, default=1,
       help='Number of layers in the LSTMs in the query encoder/decoders')
   parser.add_argument('--map_dim', type=int, default=64,
       help='Number of kernels for mapping in the submodules')
+  parser.add_argument('--text_dim', type=int, default=1,
+      help='Number of kernels for text mapping')
   parser.add_argument('--batch_size', type=int, default=256,
       help='Minibatch size for data loaders')
   parser.add_argument('--seed', type=int, default=None,
