@@ -82,6 +82,30 @@ def generateQuery():
   query = q_ast.Is(q_ast.generateRandomProperty())
 
   return query
+  
+def generateFullRandomQuery(max_depth, 
+      ops = [q_ast.Property(),q_ast.Shape(),q_ast.Color(),q_ast.And(),q_ast.Or(),q_ast.Left()
+      ,q_ast.Right(),q_ast.Above(),q_ast.Below()],
+      prob = [0.2,0.15,0.15,0.13,0.13,0.06,0.06,0.06,0.06]):
+  query = q_ast.Is()  
+  query.sample(max_depth-1, ops, prob)
+  return query
+  
+def generateRelationalAndQuery(len):
+  prop_1 = q_ast.generateRandomNullary()
+  prop_2 = q_ast.generateRandomNullary()
+  randRelational = q_ast.generateRandomRelational(prop_1, prop_2)
+  if len < 2:
+    return randRelational
+  else:
+    return q_ast.And(randRelational, generateRelationalAndQuery(len-1))
+
+def generateExistAndQuery(len):
+  randProp = q_ast.generateRandomNullary()
+  if len < 2:
+    return randRelational
+  else:
+    return q_ast.And(randProp, generateRelationalAndQuery(len-1))
 
 def getLabel(str_sample, query):
   ''' Parse query and use str_sample to determine label '''
