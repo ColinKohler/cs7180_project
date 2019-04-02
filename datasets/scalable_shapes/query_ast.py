@@ -124,8 +124,6 @@ class BinaryOp(Op):
       self.right = generateRandomNullary()
     else:
       self.left = np.random.choice(ops,1,p=prob)[0]
-      print(self.left)
-      print(depth-1)
       self.left.sample(depth-1, ops, prob)
       self.right = np.random.choice(ops,1,p=prob)[0]
       self.right.sample(depth-1, ops, prob)
@@ -205,32 +203,64 @@ class Near(BinaryOp):
       return '( {} near {} )'.format(self.left.query(parens=True), self.right.query(parens=True))
     return '{} near {}'.format(self.left.query(parens=False), self.right.query(parens=False))
 
+
+#=============================================================================#
+#                                 Boolean Ops                                  #
+#=============================================================================#
+
+
+class BoolBinaryOp(Op):
+  def __init__(self, left = None, right = None):
+    self.left = left
+    self.right = right
+
+class BoolAnd(BoolBinaryOp):
+  def eval(self, sample):
+    return (self.left.eval(sample) and self.right.eval(sample))
+
+  def query(self, parens=False):
+    if parens:
+      return '( {} and {} )'.format(self.left.query(parens=True), self.right.query(parens=True))
+    return '{} and {}'.format(self.left.query(parens=False), self.right.query(parens=False))
+
+class BoolOr(BoolBinaryOp):
+  def eval(self, sample):
+    return (self.left.eval(sample) or self.right.eval(sample))
+    
+  def query(self, parens=False):
+    if parens:
+      return '( {} or {} )'.format(self.left.query(parens=True), self.right.query(parens=True))
+    return '{} or {}'.format(self.left.query(parens=False), self.right.query(parens=False))
+
+
 #=============================================================================#
 #                                 Helpers                                     #
 #=============================================================================#
 def generateRandomProperty():
-  rand = npr.randint(2)
+  #rand = npr.randint(2)
   if rand == 0:
     return Property([Color(npr.choice(list(COLOR_PROPERTY_INTS.values()))),
                      Shape(npr.choice(list(SHAPE_PROPERTY_INTS.values())))])
-  if rand == 0:
-    return Property([Color(npr.choice(list(COLOR_PROPERTY_INTS.values())))])
-  else:
-    return Property([Shape(npr.choice(list(SHAPE_PROPERTY_INTS.values())))])
+  #if rand == 0:
+  #  return Property([Color(npr.choice(list(COLOR_PROPERTY_INTS.values())))])
+  #else:
+  #  return Property([Shape(npr.choice(list(SHAPE_PROPERTY_INTS.values())))])
 
-def generateRandomNullary():
-  rand = npr.randint(3)
+def generateRandomNullary(property_prob = 0.33):
+  rand = npr.randint(2)
+  randn = npr.rand()
   # if rand == 0:
   #   return Property([Color(npr.choice(list(COLOR_PROPERTY_INTS.values()))),
   #                    Shape(npr.choice(list(SHAPE_PROPERTY_INTS.values())))])
-  if rand == 0:
+  if randn < property_prob:
     return Property([Color(npr.choice(list(COLOR_PROPERTY_INTS.values()))),
                      Shape(npr.choice(list(SHAPE_PROPERTY_INTS.values())))])
-  elif rand == 1:
-    return Color(npr.choice(list(COLOR_PROPERTY_INTS.values())))
-  elif rand == 2:
-    return Shape(npr.choice(list(SHAPE_PROPERTY_INTS.values())))
-  
+  else:
+    if rand == 0:
+      return Color(npr.choice(list(COLOR_PROPERTY_INTS.values())))
+    else:
+      return Shape(npr.choice(list(SHAPE_PROPERTY_INTS.values())))
+    
 def generateRandomRelational(prop_1, prop_2):
   relational = npr.choice([Above, Below, Left, Right])
   return relational(prop_1, prop_2)
