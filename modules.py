@@ -13,7 +13,7 @@ class And(nn.Module):
 
   def forward(self, attention):
     # Soft-logical and (Min)
-    return torch.min(attention, dim=1)[0]
+    return F.relu(torch.min(attention, dim=1)[0])
 
 class Or(nn.Module):
   def __init__(self):
@@ -22,7 +22,7 @@ class Or(nn.Module):
 
   def forward(self, attention):
      # Soft-logical or (Max)
-    return torch.max(attention, dim=1)[0]
+    return F.relu(torch.max(attention, dim=1)[0])
 
 class Id(nn.Module):
   def __init__(self):
@@ -30,7 +30,7 @@ class Id(nn.Module):
     self.num_attention_maps = 1
 
   def forward(self, input):
-    return input
+    return F.relu(input)
 
 ###########################################################################################################################################
 #                                                         Complex Modules                                                                 #
@@ -53,10 +53,10 @@ class Find(nn.Module):
 
   def forward(self, context, text):
     batch_size = context.size(0)
-    text_mapped = self.fc1(text).view(batch_size, self.num_kernels, 1, 1)
-    context_mapped = self.conv1(context)
-    eltwise_mult = text_mapped  * context_mapped
-    return F.relu(self.conv2(eltwise_mult))
+    text_mapped = F.relu(self.fc1(text.view(batch_size, -1))).view(batch_size, self.num_kernels, 1, 1)
+    context_mapped = F.relu(self.conv1(context))
+    eltwise_mult = F.normalize(text_mapped  * context_mapped)
+    return F.sigmoid(self.conv2(eltwise_mult))
 
 class Relocate(nn.Module):
   def __init__(self, context_size, num_kernels=64, text_dim=256):
@@ -76,16 +76,16 @@ class Relocate(nn.Module):
 
   def forward(self, attention, context, text):
     batch_size = attention.shape[0]
-    text_mapped = self.fc1(text).view(batch_size, self.num_kernels, 1, 1)
-    context_mapped = self.conv1(context)
+    text_mapped = F.relu(self.fc1(text.view(batch_size, -1)).view(batch_size, self.num_kernels, 1, 1))
+    context_mapped = F.relu(self.conv1(context))
 
     attention_softmax = F.softmax(attention.view(batch_size, -1), dim=1)
     attention_softmax = attention_softmax.view(batch_size, 1, self.context_size[1], self.context_size[2])
     attention = torch.sum(context * attention_softmax, dim=[2,3])
-    attention_mapped = self.fc2(attention).view(batch_size, self.num_kernels, 1, 1)
+    attention_mapped = F.sigmoid(self.fc2(attention)).view(batch_size, self.num_kernels, 1, 1)
 
-    eltwise_mult = context_mapped * text_mapped * attention_mapped
-    return F.relu(self.conv2(eltwise_mult))
+    eltwise_mult = F.normalize(context_mapped * text_mapped * attention_mapped)
+    return F.sigmoid(self.conv2(eltwise_mult))
 
 ###########################################################################################################################################
 #                                                          Answer Modules                                                                 #

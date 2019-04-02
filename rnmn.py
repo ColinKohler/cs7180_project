@@ -11,54 +11,57 @@ from encoders import QueryEncoder, ContextEncoder
 from decoders import Decoder
 
 class RNMN(nn.Module):
-  def __init__(self, query_size, map_dim, hidden_size, device, mt_norm=1, comp_length=5, comp_stop_type=1, query_max_len=3):
+  def __init__(self, query_size, embed_size, num_layers, map_dim, hidden_size, max_query_len, device, mt_norm=1, comp_length=5, comp_stop_type=1):
     super(RNMN, self).__init__()
     self.device = device
     self.query_size = query_size
+    self.embed_size = embed_size
     self.hidden_size = hidden_size
+    self.num_layers = num_layers
     self.map_dim = map_dim
     self.context_size = [64, 6, 6]
     self.comp_length = comp_length
     self.comp_stop_type = comp_stop_type
-    self.query_max_len = query_max_len
+    self.max_query_len = max_query_len
 
     # Create attention and answer modules
-    self.find = Find(self.context_size, num_kernels=map_dim, text_dim=self.query_max_len)
-    self.relocate = Relocate(self.context_size, num_kernels=map_dim, text_dim=self.query_max_len)
+    self.find = Find(self.context_size, num_kernels=map_dim, text_dim=1)
+    self.relocate = Relocate(self.context_size, num_kernels=map_dim, text_dim=1)
     self.exist = Exist(self.context_size)
-    self.attention_modules = [And(), Or(), Id(), self.find, self.relocate]  #
+    self.attention_modules = [And(), self.find, self.relocate]
     self.num_att_modules = len(self.attention_modules)
     self.answer_modules = [self.exist]
     [module.to(self.device) for module in self.attention_modules + self.answer_modules]
 
+    self.query_combine = nn.Linear(self.max_query_len*self.embed_size, 1)
+
     # Create query and context encoders
-    self.query_encoder = QueryEncoder(self.query_size, self.hidden_size, self.device, num_layers=1)
+    self.query_encoder = QueryEncoder(self.query_size, self.embed_size, self.hidden_size, self.device, num_layers=self.num_layers, max_query_len=self.max_query_len)
     self.context_encoder = ContextEncoder()
 
     # Create decoder
     self.M_size = (self.num_att_modules, sum([m.num_attention_maps for m in self.attention_modules + self.answer_modules]))
-    self.x_size = 256
-    self.decoder = Decoder(self.query_max_len, self.hidden_size, self.M_size, self.x_size, self.device, num_layers=1, mt_norm=mt_norm)
+    self.decoder = Decoder(self.max_query_len, self.hidden_size, self.M_size, self.device, num_layers=self.num_layers, mt_norm=mt_norm)
 
   def forward(self, query, query_len, context, debug=False):
     batch_size = query.size(0)
 
     # Encode the query and context
-    encoded_query, query_hidden = self._encodeQuery(query, query_len, debug=debug)
+    embedded_query, encoded_query, query_hidden = self._encodeQuery(query, query_len, debug=debug)
     encoded_context = self.context_encoder(context)
 
     # Loop over timesteps using modules until a threshold is met
     self.decoder.hidden = query_hidden
     self.a_t = torch.randn((batch_size, self.M_size[1], self.context_size[1], self.context_size[2]), requires_grad=True, device=self.device)
-    self.M_t = torch.ones((batch_size, self.M_size[0], self.M_size[1]), requires_grad=True, device=self.device)
+    self.M_t = torch.randn((batch_size, self.M_size[0], self.M_size[1]), requires_grad=True, device=self.device)
 
     self.stop_mask = torch.zeros((batch_size, self.comp_length), device=self.device)
     self.outs = torch.zeros((batch_size, self.comp_length, 2), device=self.device)
 
-    # TODO: This for loop should be replaced with some sort of thresholding junk
-    if debug: ipdb.set_trace()
     for t in range(self.comp_length):
-      self.M_t, self.x_t, stop_bits = self.decoder(self.M_t.view(batch_size, self.M_size[0]*self.M_size[1], 1).permute(2,0,1), encoded_query, debug=debug)
+      if debug: ipdb.set_trace()
+      self.M_t, attn, stop_bits = self.decoder(self.M_t.view(batch_size, self.M_size[0]*self.M_size[1], 1).permute(2,0,1), encoded_query, debug=debug)
+      self.x_t = self.query_combine(torch.einsum('dbe,ebn->ben', attn, embedded_query).view(batch_size, -1))
       self.a_t, out = self.forward_1t(encoded_context, debug=debug)
 
       if (self.comp_stop_type == 1):
@@ -110,10 +113,10 @@ class RNMN(nn.Module):
 
     # Encode each word in the query
     self.query_encoder.resetHidden(batch_size)
-    #if debug: ipdb.set_trace()
-    outputs, (hidden_states, cell_states) = self.query_encoder(query, query_len)
+    if debug: ipdb.set_trace()
+    embeded_query, outputs, (hidden_states, cell_states) = self.query_encoder(query, query_len)
 
-    return outputs, (hidden_states, cell_states)
+    return embeded_query, outputs, (hidden_states, cell_states)
 
   def saveModel(self, save_path):
     pass

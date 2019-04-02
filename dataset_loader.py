@@ -15,6 +15,7 @@ class QueryLang(object):
     self.index_to_word = {self.EOQ_token: 'EOQ'}
     self.word_to_count = dict()
     self.num_words = 1
+    self.max_len = 0
 
   def addQuery(self, query):
     for word in query.split(' '):
@@ -63,6 +64,8 @@ def createScalableShapesDataLoader(dataset, batch_size=64, rebalanced=True):
     max_len = max(max_len, len(encoded_query))
     encoded_queries.append(encoded_query)
     query_lens.append(len(encoded_query))
+
+  query_lang.max_len = max_len
 
   # Pad encoded queries with EOQ tokens
   queries = np.ones((len(query_lens), max_len), dtype=np.long) * query_lang.EOQ_token
