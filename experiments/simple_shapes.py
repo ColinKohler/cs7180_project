@@ -22,8 +22,8 @@ def train(config):
   query_lang, train_loader, test_loader, query_max_len = dataset_loader.createScalableShapesDataLoader(config.dataset, batch_size=config.batch_size)
 
   # Init model
-  model = RNMN(query_lang, config.embed_dim, config.num_layers, config.lstm_hidden_dim, config.map_dim,
-               config.text_dim, device, config.mt_norm, config.comp_length, config.comp_stop).to(device)
+  model = RNMN(query_lang, config.embed_dim, config.num_layers, config.lstm_hidden_dim,
+               config.map_dim, device, config.mt_norm, config.comp_length, config.comp_stop).to(device)
   if config.weight_decay == 0:
     optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
   else:
@@ -127,8 +127,6 @@ if __name__ == '__main__':
       help='Number of layers in the LSTMs in the query encoder/decoders')
   parser.add_argument('--map_dim', type=int, default=64,
       help='Number of kernels for mapping in the submodules')
-  parser.add_argument('--text_dim', type=int, default=1,
-      help='Number of kernels for text mapping')
   parser.add_argument('--batch_size', type=int, default=256,
       help='Minibatch size for data loaders')
   parser.add_argument('--seed', type=int, default=None,

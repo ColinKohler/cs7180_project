@@ -1,6 +1,7 @@
 # Repo specific
 datasets/scalable_shapes/*.npy
 datasets/scalable_shapes/data/
+datasets/shapes_dataset
 milestone_1_assets/
 datasets/scalable_shapes/testing.ipynb
 *.png

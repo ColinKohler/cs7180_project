@@ -22,7 +22,7 @@ class Visualizer(object):
     self.G.node_attr['margin'] = '0.22, 0.11'
     if not os.path.exists('vis_tmp'): os.mkdir('vis_tmp')
 
-  def visualizeTimestep(self, step, context, query, a_t, M_t, b_t, out):
+  def visualizeTimestep(self, step, context, query, attn_t, x_t, a_t, M_t, b_t, out):
     # Add sample/query node
     path = self._saveSample(step, context, query)
     self.G.add_node('sample_{}'.format(step), image=path)
@@ -37,13 +37,19 @@ class Visualizer(object):
     self.G.add_edge('a_{}'.format(step), 'b_{}'.format(step))
     self.G.add_edge('sample_{}'.format(step), 'b_{}'.format(step))
 
-    # Add composition matrix node
-    if step < self.comp_length - 1:
-      self.G.add_node('M_{}'.format(step), labelloc='m', label=M_t.cpu().numpy().transpose().squeeze())
+    # Add attn and text input nodes and edges
+    self.G.add_node('x_{}'.format(step), labelloc='m',
+                    label='attn_{}: {}\nx_{}: {}'.format(step, attn_t.cpu().numpy().squeeze(), step, x_t.cpu().numpy().squeeze()))
+    self.G.add_edge('x_{}'.format(step), 'b_{}'.format(step))
 
     # Add output node and edge
-    self.G.add_node('out_{}'.format(step), labelloc='m', label=out.cpu().numpy().squeeze())
+    self.G.add_node('out_{}'.format(step), labelloc='m', label='out_{}: {}'.format(step, out.cpu().numpy().squeeze()))
     self.G.add_edge('a_{}'.format(step), 'out_{}'.format(step))
+
+    # Add composition matrix node
+    if step < self.comp_length - 1:
+      self.G.add_node('M_{}'.format(step), labelloc='m', label='M_{}:\n{}'.format(step, M_t.cpu().numpy().transpose().squeeze()))
+
 
     # If not the first timestep connect input attention to past
     # compositional and output attention nodes
@@ -77,7 +83,7 @@ class Visualizer(object):
         axi.set_title(self.module_input_names[i])
       else:
         axi.set_title(self.module_output_names[i])
-      axi.imshow(a[0,i].cpu(), cmap='gray')
+      axi.imshow(a[0,i].cpu(), cmap='gray')#, vmin=0.0, vmax=1.0)
 
     # Save the figure to a temp file
     plt.tight_layout(True)

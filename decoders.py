@@ -16,27 +16,27 @@ class Decoder(nn.Module):
     self.input_dim = self.output_dim
     self.mt_norm = mt_norm
 
-    self.attn = nn.Linear(self.hidden_dim + self.input_dim, self.max_length)
+    self.attn1 = nn.Linear(self.input_dim, self.hidden_dim)
+    self.attn2 = nn.Linear(self.hidden_dim, self.max_length)
+    # self.attn = nn.Linear(self.hidden_dim + self.input_dim, self.max_length)
     self.attn_combine = nn.Linear(self.hidden_dim + self.input_dim, self.hidden_dim)
 
     self.dropout = nn.Dropout(dropout_prob)
     self.lstm = nn.LSTM(self.hidden_dim, self.hidden_dim, num_layers=self.num_layers)
-    self.fc1 = nn.Linear(self.hidden_dim, 128)
-    self.fc2 = nn.Linear(128, self.output_dim)
+    self.fc1 = nn.Linear(self.hidden_dim, self.output_dim)
 
-  def forward(self, prev_M, encoder_outputs, debug=False):
+  def forward(self, prev_M, encoder_outputs, query_len, debug=False):
     batch_size = prev_M.size(1)
     prev_M = self.dropout(prev_M)
 
-    attn_weights = F.softmax(self.attn(torch.cat((prev_M, self.hidden[0]), dim=2)), dim=2)
-    # TODO: Mask the padded parts out to 0.
-    # TODO: does this make any sort of sense whatsoever (it works?)
-    attn_applied = F.relu(torch.einsum('lbs,sbh->lbh', attn_weights, encoder_outputs))
+    mask = torch.arange(self.max_length, device=self.device).expand(len(query_len), self.max_length) < query_len.unsqueeze(1)
+    attn_weights = F.softmax(self.attn2(F.tanh(self.attn1(prev_M)) + self.hidden[0]), dim=2) * mask.float()
+    # attn_weights = F.softmax(self.attn(torch.cat((prev_M, self.hidden[0]), dim=2)), dim=2)
+    attn_applied = torch.einsum('lbs,sbh->lbh', attn_weights, encoder_outputs)
 
-    out = self.attn_combine(torch.cat((prev_M, attn_applied), dim=2))
+    out = F.relu(self.attn_combine(torch.cat((prev_M, attn_applied), dim=2)))
     out, self.hidden = self.lstm(F.relu(out), self.hidden)
-    out = F.relu(self.fc1(out[0]))
-    out = self.fc2(out)
+    out = self.fc1(out.view(batch_size, -1))
 
     M = out.view(batch_size, self.M_dim[0], self.M_dim[1])
 
