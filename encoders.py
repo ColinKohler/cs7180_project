@@ -16,7 +16,7 @@ class QueryEncoder(nn.Module):
 
     self.word_embeddings = nn.Embedding(self.input_dim, self.embed_dim)
     self.dropout = nn.Dropout(dropout_prob)
-    self.lstm = nn.LSTM(self.embed_dim, self.hidden_dim, num_layers=self.num_layers)
+    self.lstm = nn.LSTM(self.embed_dim, self.hidden_dim, num_layers=self.num_layers, batch_first=True)
 
   def resetHidden(self, batch_dim):
     self.hidden = (torch.zeros(self.num_layers, batch_dim, self.hidden_dim).to(self.device),
@@ -24,12 +24,12 @@ class QueryEncoder(nn.Module):
 
   def forward(self, query, query_len, debug=False):
     if debug: ipdb.set_trace()
-    embedded = self.word_embeddings(query.permute(1,0))
+    embedded = self.word_embeddings(query)
     embedded = self.dropout(embedded)
 
-    packed = nn.utils.rnn.pack_padded_sequence(embedded, query_len)
+    packed = nn.utils.rnn.pack_padded_sequence(embedded, query_len, batch_first=True)
     lstm_out, self.hidden = self.lstm(packed, self.hidden)
-    output, output_lens = torch.nn.utils.rnn.pad_packed_sequence(lstm_out, total_length=self.max_query_len)
+    output, output_lens = torch.nn.utils.rnn.pad_packed_sequence(lstm_out, total_length=self.max_query_len, batch_first=True)
     return embedded, output, self.hidden
 
 class ContextEncoder(nn.Module):

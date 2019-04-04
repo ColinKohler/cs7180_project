@@ -83,7 +83,7 @@ class Visualizer(object):
         axi.set_title(self.module_input_names[i])
       else:
         axi.set_title(self.module_output_names[i])
-      axi.imshow(a[0,i].cpu(), cmap='gray')#, vmin=0.0, vmax=1.0)
+      axi.imshow(a[0,i].cpu(), cmap='gray', vmin=0.0, vmax=1.0)
 
     # Save the figure to a temp file
     plt.tight_layout(True)

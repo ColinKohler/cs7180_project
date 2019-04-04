@@ -60,7 +60,7 @@ class Find(nn.Module):
     batch_size = context.size(0)
     text_mapped = F.relu(self.fc1(text.view(batch_size, -1))).view(batch_size, self.map_dim, 1, 1)
     context_mapped = F.relu(self.conv1(context))
-    eltwise_mult = F.normalize(torch.einsum('bmxx,bmhw->bmhw', text_mapped, context_mapped), dim=1)
+    eltwise_mult = F.normalize(text_mapped * context_mapped, dim=1)
     return self.sigmoid(self.conv2(eltwise_mult))
 
 class Relocate(nn.Module):

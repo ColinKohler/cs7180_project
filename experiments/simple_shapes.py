@@ -22,8 +22,8 @@ def train(config):
   query_lang, train_loader, test_loader, query_max_len = dataset_loader.createScalableShapesDataLoader(config.dataset, batch_size=config.batch_size)
 
   # Init model
-  model = RNMN(query_lang, config.embed_dim, config.num_layers, config.lstm_hidden_dim,
-               config.map_dim, device, config.mt_norm, config.comp_length, config.comp_stop).to(device)
+  model = RNMN(query_lang, config.embed_dim, config.num_layers, config.map_dim, config.lstm_hidden_dim,
+               device, config.mt_norm, config.comp_length, config.comp_stop).to(device)
   if config.weight_decay == 0:
     optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
   else:
@@ -72,7 +72,7 @@ def train(config):
 def test(config):
   pass
 
-def trainBatch(model, optimizer, criterion, samples, queries, query_lens, labels, debug=False):
+def trainBatch(model, optimizer, criterion, samples, queries, query_lens, labels, clip=10, debug=False):
   model.train()
   # Transfer data to gpu/cpu and pass through model
   samples, queries, query_lens, labels = sortByQueryLen(samples, queries, query_lens, labels)
@@ -83,6 +83,7 @@ def trainBatch(model, optimizer, criterion, samples, queries, query_lens, labels
   optimizer.zero_grad()
   loss = criterion(output, labels.squeeze().long())
   loss.backward()
+  nn.utils.clip_grad_norm_(model.parameters(), clip)
   optimizer.step()
 
   return loss.item()
@@ -141,7 +142,7 @@ if __name__ == '__main__':
       help='M_t matrix normalization (0=None, 1=row softmax (default), 2=2dsoftmax, 3=rowsum clamped [0,1]')
   parser.add_argument('--comp_length', type=int, default=5,
       help='maximum number of compositions (default = 5)')
-  parser.add_argument('--comp_stop', type=int, default=1,
+  parser.add_argument('--comp_stop', type=int, default=0,
       help='method for selecting output timestep (0=last, 1=learned_weighted_avg (default))')
 
   args = parser.parse_args()

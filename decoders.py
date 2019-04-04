@@ -16,28 +16,24 @@ class Decoder(nn.Module):
     self.input_dim = self.output_dim
     self.mt_norm = mt_norm
 
-    self.attn1 = nn.Linear(self.input_dim, self.hidden_dim)
-    self.attn2 = nn.Linear(self.hidden_dim, self.max_length)
-    # self.attn = nn.Linear(self.hidden_dim + self.input_dim, self.max_length)
-    self.attn_combine = nn.Linear(self.hidden_dim + self.input_dim, self.hidden_dim)
+    self.attn = Attention(self.hidden_dim)
 
+    self.composition_expand = nn.Linear(self.output_dim, self.hidden_dim)
     self.dropout = nn.Dropout(dropout_prob)
-    self.lstm = nn.LSTM(self.hidden_dim, self.hidden_dim, num_layers=self.num_layers)
+    self.lstm = nn.LSTM(self.hidden_dim, self.hidden_dim, num_layers=self.num_layers, batch_first=True)
     self.fc1 = nn.Linear(self.hidden_dim, self.output_dim)
+    self.tanh = nn.Tanh()
 
   def forward(self, prev_M, encoder_outputs, query_len, debug=False):
-    batch_size = prev_M.size(1)
+    batch_size = prev_M.size(0)
     prev_M = self.dropout(prev_M)
 
+    prev_M = self.composition_expand(prev_M)
     mask = torch.arange(self.max_length, device=self.device).expand(len(query_len), self.max_length) < query_len.unsqueeze(1)
-    attn_weights = F.softmax(self.attn2(F.tanh(self.attn1(prev_M)) + self.hidden[0]), dim=2) * mask.float()
-    # attn_weights = F.softmax(self.attn(torch.cat((prev_M, self.hidden[0]), dim=2)), dim=2)
-    attn_applied = torch.einsum('lbs,sbh->lbh', attn_weights, encoder_outputs)
+    out, attn_weights = self.attn(prev_M, encoder_outputs)
 
-    out = F.relu(self.attn_combine(torch.cat((prev_M, attn_applied), dim=2)))
     out, self.hidden = self.lstm(F.relu(out), self.hidden)
     out = self.fc1(out.view(batch_size, -1))
-
     M = out.view(batch_size, self.M_dim[0], self.M_dim[1])
 
     if (self.mt_norm == 1):
@@ -58,3 +54,32 @@ class Decoder(nn.Module):
   def resetHidden(self, batch_size):
     return (torch.zeros(self.num_layers, batch_size, self.hidden_dim).to(self.device),
             torch.zeros(self.num_layers, batch_size, self.hidden_dim).to(self.device))
+
+class Attention(nn.Module):
+  def __init__(self, hidden_dim):
+    super(Attention, self).__init__()
+
+    self.hidden_dim = hidden_dim
+    self.linear_out = nn.Linear(self.hidden_dim*2, self.hidden_dim)
+    self.tanh = nn.Tanh()
+
+  def forward(self, output, context, mask=None):
+    batch_size = output.size(0)
+    hidden_size = output.size(2)
+    input_size = context.size(1)
+
+    # (batch, out_len, dim) * (batch, in_len, dim) -> (batch, out_len, in_len)
+    attn = torch.bmm(output, context.permute(0,2,1))
+    if mask:
+      attn.data.masked_fill_(mask, -float('inf'))
+    attn = F.softmax(attn.view(-1, input_size), dim=1).view(batch_size, -1, input_size)
+
+    # (batch, out_len, in_len) * (batch, in_len, dim) -> (batch, out_len, dim)
+    mix = torch.bmm(attn, context)
+
+    # concat -> (batch, out_len, 2*dim)
+    combined = torch.cat((mix, output), dim=2)
+    # output -> (batch, out_len, dim)
+    output = self.tanh(self.linear_out(combined.view(-1, 2* hidden_size))).view(batch_size, -1, hidden_size)
+
+    return output, attn

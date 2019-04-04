@@ -19,15 +19,16 @@ class RNMN(nn.Module):
     self.device = device
     self.query_dim = query_lang.num_words
     self.embed_dim = embed_dim
-    self.lstm_hidden_dim = lstm_hidden_dim
-    self.text_dim = 1
     self.num_layers = num_layers
+    self.lstm_hidden_dim = lstm_hidden_dim
     self.map_dim = map_dim
+    self.text_dim = 1
     self.context_dim = [64, 3, 3]
+
     self.comp_length = comp_length
     self.comp_stop_type = comp_stop_type
-    self.max_query_len = query_lang.max_len
     self.query_lang = query_lang
+    self.max_query_len = query_lang.max_len
 
     # Create attention and answer modules
     self.find = Find(self.context_dim, map_dim=self.map_dim, text_dim=self.text_dim)
@@ -69,8 +70,8 @@ class RNMN(nn.Module):
 
     for t in range(self.comp_length):
       if debug: ipdb.set_trace()
-      M_t, attn, stop_bits = self.decoder(M_t.view(batch_size, self.M_dim[0]*self.M_dim[1], 1).permute(2,0,1), encoded_query, query_len, debug=debug)
-      x_t = torch.einsum('dbe,ebn->bd', attn, embedded_query)
+      M_t, attn, stop_bits = self.decoder(M_t.view(batch_size, 1, self.M_dim[0]*self.M_dim[1]), encoded_query, query_len, debug=debug)
+      x_t = torch.sum(torch.bmm(attn, embedded_query), dim=2)
       b_t, a_tp1, out = self.forward_1t(encoded_context, a_t, M_t, x_t, debug=debug)
 
       if vis:
@@ -80,7 +81,7 @@ class RNMN(nn.Module):
         stop_mask[:,t] = stop_bits.squeeze(1)
         outs[:,t,:] = out
 
-      a_t = copy.copy(a_tp1)
+      a_t = a_tp1
 
     if (self.comp_stop_type == 1):
       stop_mask = F.softmax(stop_mask, dim=1)
@@ -120,8 +121,6 @@ class RNMN(nn.Module):
     if debug: ipdb.set_trace()
     a_tp1 = torch.einsum('bkij,bkl->blij', b_t, M_t)
     return b_t, a_tp1, out
-
-    return embeded_query, outputs, (hidden_)
 
   def saveModel(self, save_path):
     pass
