@@ -40,7 +40,7 @@ class Id(nn.Module):
 ###########################################################################################################################################
 
 class Find(nn.Module):
-  def __init__(self, context_dim, map_dim=64, text_dim=256):
+  def __init__(self, context_dim, map_dim=64, text_dim=1):
     super(Find, self).__init__()
     self.num_attention_maps = 0
     self.name = 'Find'
@@ -64,7 +64,7 @@ class Find(nn.Module):
     return self.sigmoid(self.conv2(eltwise_mult))
 
 class Relocate(nn.Module):
-  def __init__(self, context_dim, map_dim=64, text_dim=256):
+  def __init__(self, context_dim, map_dim=64, text_dim=1):
     super(Relocate, self).__init__()
     self.num_attention_maps = 1
     self.name = 'Relocate'

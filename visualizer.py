@@ -20,9 +20,10 @@ class Visualizer(object):
     self.G.node_attr['shape'] = 'box'
     self.G.node_attr['labelloc'] = 't'
     self.G.node_attr['margin'] = '0.22, 0.11'
-    if not os.path.exists('vis_tmp'): os.mkdir('vis_tmp')
 
   def visualizeTimestep(self, step, context, query, attn_t, x_t, a_t, M_t, b_t, out):
+    if not os.path.exists('vis_tmp'): os.mkdir('vis_tmp')
+
     # Add sample/query node
     path = self._saveSample(step, context, query)
     self.G.add_node('sample_{}'.format(step), image=path)
@@ -50,7 +51,6 @@ class Visualizer(object):
     if step < self.comp_length - 1:
       self.G.add_node('M_{}'.format(step), labelloc='m', label='M_{}:\n{}'.format(step, M_t.cpu().numpy().transpose().squeeze()))
 
-
     # If not the first timestep connect input attention to past
     # compositional and output attention nodes
     if step > 0:
@@ -58,7 +58,7 @@ class Visualizer(object):
       self.G.add_edge('M_{}'.format(step-1), 'a_{}'.format(step))
 
   def saveGraph(self, prefix=''):
-    self.G.draw('{}_forward_viz.png'.format(prefix), prog='dot')
+    self.G.draw('viz/{}_forward_viz.png'.format(prefix), prog='dot')
     shutil.rmtree('vis_tmp')
 
   def _saveSample(self, step, sample, query):

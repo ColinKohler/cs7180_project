@@ -63,9 +63,11 @@ def train(config):
   # Close progress bar
   pbar.close()
 
-  for i in range(10):
+  for i in range(5):
     samples, queries, query_lens, labels = test_loader.dataset[i:i+1]
-    output, loss, correct = testBatch(model, criterion, samples, queries, query_lens, labels, vis=True, i=0)
+    output, loss, correct = testBatch(model, criterion, samples, queries, query_lens, labels, vis=True, i=i)
+
+  model.saveModel('models/text.pt')
 
   plt.plot(test_accs)
   plt.show()
