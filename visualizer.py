@@ -21,6 +21,8 @@ class Visualizer(object):
     self.G.node_attr['labelloc'] = 't'
     self.G.node_attr['margin'] = '0.22, 0.11'
 
+    if not os.path.exists('vis'): os.mkdir('vis')
+
   def visualizeTimestep(self, step, context, query, attn_t, x_t, a_t, M_t, b_t, out):
     if not os.path.exists('vis_tmp'): os.mkdir('vis_tmp')
 
