@@ -64,6 +64,7 @@ class RNMN(nn.Module):
     # Loop over timesteps using modules until a threshold is met
     a_t = torch.zeros((batch_size, self.M_dim[1], self.context_dim[1], self.context_dim[2]), device=self.device)
     M_t = torch.zeros((batch_size, self.M_dim[0], self.M_dim[1]), device=self.device)
+    M = torch.zeros((self.comp_length, batch_size, self.M_dim[0], self.M_dim[1]), device=self.device)
 
     stop_mask = torch.zeros((batch_size, self.comp_length), device=self.device)
     outs = torch.zeros((batch_size, self.comp_length, 2), device=self.device)
@@ -71,6 +72,8 @@ class RNMN(nn.Module):
     for t in range(self.comp_length):
       if debug: ipdb.set_trace()
       M_t, attn, stop_bits = self.decoder(M_t.view(batch_size, 1, self.M_dim[0]*self.M_dim[1]), encoded_query, query_len, debug=debug)
+      M[t] = M_t
+      
       x_t = torch.sum(torch.bmm(attn, embedded_query), dim=2)
       b_t, a_tp1, out = self.forward_1t(encoded_context, a_t, M_t, x_t, debug=debug)
 
@@ -89,7 +92,8 @@ class RNMN(nn.Module):
 
     if debug: ipdb.set_trace()
     if vis: self.visualizer.saveGraph(str(i))
-    return F.log_softmax(out, dim=1)
+    M_std = torch.var(M,dim=0)
+    return F.log_softmax(out, dim=1), M_std
 
   def forward_1t(self, encoded_context, a_t, M_t, x_t, debug=False):
     batch_size = encoded_context.size(0)
