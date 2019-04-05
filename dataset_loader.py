@@ -51,7 +51,8 @@ def createScalableShapesDataLoader(dataset, batch_size=64, rebalanced=True):
   # Image tensors for pyTorch are Batch X Channels X X_dim X Y_dim.
   # NP images are currently Batch X X_dim X Y_dim X Channels
   samples = np.transpose(samples,(0,3,1,2))
-  samples = (samples - samples.mean(axis=0)).astype(np.float32)
+  samples -= samples.mean(axis=0)
+  samples = samples.astype(np.float32)
 
   # Create the query language
   query_lang = QueryLang()
@@ -120,7 +121,8 @@ def createShapesDataLoader(dataset, batch_size=64):
   # Image tensors for pyTorch are Batch X Channels X X_dim X Y_dim.
   # NP images are currently Batch X X_dim X Y_dim X Channels
   samples = np.transpose(samples,(0,3,1,2))
-  samples = (samples - samples.mean(axis=0)).astype(np.float32)
+  samples -= samples.mean(axis=0)
+  samples = samples.astype(np.float32)
 
   # Create the query language
   query_lang = QueryLang()
