@@ -75,16 +75,26 @@ def train(config):
 def test(config):
   pass
 
+
+def MtRegularization(M_std):
+  M_std = torch.clamp(M_std,0,0.5)
+  M_std_transform = torch.sigmoid((M_std - 0.5)**2)
+  M_t_regularization = torch.sum(M_std_transform)/5000.0
+  return M_t_regularization
+
+
 def trainBatch(model, optimizer, criterion, samples, queries, query_lens, labels, clip=10, debug=False):
   model.train()
   # Transfer data to gpu/cpu and pass through model
   samples, queries, query_lens, labels = sortByQueryLen(samples, queries, query_lens, labels)
   samples, queries, query_lens, labels = tensorToDevice(samples, queries, query_lens, labels)
-  output = model(queries, query_lens, samples, debug=debug)
+  output, M_std = model(queries, query_lens, samples, debug=debug)
 
   # Compute loss & step optimzer
+  #ipdb.set_trace()
   optimizer.zero_grad()
-  loss = criterion(output, labels.squeeze().long())
+  #print(torch.mean(M_std))
+  loss = criterion(output, labels.squeeze().long()) +  0.25 * MtRegularization(M_std)
   loss.backward()
   nn.utils.clip_grad_norm_(model.parameters(), clip)
   optimizer.step()
@@ -97,10 +107,10 @@ def testBatch(model, criterion, samples, queries, query_lens, labels, debug=Fals
     # Transfer data to gpu/cpu and pass through model
     samples, queries, query_lens, labels = sortByQueryLen(samples, queries, query_lens, labels)
     samples, queries, query_lens, labels = tensorToDevice(samples, queries, query_lens, labels)
-    output = model(queries, query_lens, samples, vis=vis, debug=debug, i=i)
+    output, M_std = model(queries, query_lens, samples, vis=vis, debug=debug, i=i)
 
     # Compute loss & accuracy
-    loss = criterion(output, labels.squeeze(1).long())
+    loss = criterion(output, labels.squeeze(1).long()) + 0.25 * MtRegularization(M_std) 
     pred = output.argmax(dim=1, keepdim=True)
     correct = pred.eq(labels.view_as(pred).round().long()).sum()
 
