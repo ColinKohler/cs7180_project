@@ -60,7 +60,7 @@ class Visualizer(object):
       self.G.add_edge('M_{}'.format(step-1), 'a_{}'.format(step))
 
   def saveGraph(self, prefix=''):
-    self.G.draw('viz/{}_forward_viz.png'.format(prefix), prog='dot')
+    self.G.draw('vis/{}_forward_viz.png'.format(prefix), prog='dot')
     shutil.rmtree('vis_tmp')
 
   def _saveSample(self, step, sample, query):
