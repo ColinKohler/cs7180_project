@@ -22,15 +22,14 @@ class Decoder(nn.Module):
     self.dropout = nn.Dropout(dropout_prob)
     self.lstm = nn.LSTM(self.hidden_dim, self.hidden_dim, num_layers=self.num_layers, batch_first=True)
     self.fc1 = nn.Linear(self.hidden_dim, self.output_dim)
-    self.tanh = nn.Tanh()
 
   def forward(self, prev_M, encoder_outputs, query_len, debug=False):
     batch_size = prev_M.size(0)
     prev_M = self.dropout(prev_M)
 
     prev_M = self.composition_expand(prev_M)
-    mask = torch.arange(self.max_length, device=self.device).expand(len(query_len), self.max_length) < query_len.unsqueeze(1)
-    out, attn_weights = self.attn(prev_M, encoder_outputs)
+    mask = torch.arange(self.max_length, device=self.device).expand(len(query_len), self.max_length) >= query_len.unsqueeze(1)
+    out, attn_weights = self.attn(prev_M, encoder_outputs, mask=mask.unsqueeze(1), temp=1.0)
 
     out, self.hidden = self.lstm(F.relu(out), self.hidden)
     out = self.fc1(out.view(batch_size, -1))
@@ -38,7 +37,7 @@ class Decoder(nn.Module):
 
     if (self.mt_norm == 1):
       #   Train Loss:0.52322 | Test Loss:0.50811 | Test Acc:0.757:
-      M = F.softmax(M, dim=1)
+      M = F.softmax(M/0.75, dim=1)
     elif (self.mt_norm == 2):
       #   Train Loss:0.44937 | Test Loss:0.49296 | Test Acc:0.753:
       M = F.softmax(M.view(batch_size,-1), dim=1).view(batch_size, self.M_dim[0], self.M_dim[1])
@@ -63,16 +62,16 @@ class Attention(nn.Module):
     self.linear_out = nn.Linear(self.hidden_dim*2, self.hidden_dim)
     self.tanh = nn.Tanh()
 
-  def forward(self, output, context, mask=None):
+  def forward(self, output, context, mask=None, temp=1.0):
     batch_size = output.size(0)
     hidden_size = output.size(2)
     input_size = context.size(1)
 
     # (batch, out_len, dim) * (batch, in_len, dim) -> (batch, out_len, in_len)
     attn = torch.bmm(output, context.permute(0,2,1))
-    if mask:
+    if not mask is None:
       attn.data.masked_fill_(mask, -float('inf'))
-    attn = F.softmax(attn.view(-1, input_size), dim=1).view(batch_size, -1, input_size)
+    attn = F.softmax(attn.view(-1, input_size)/temp, dim=1).view(batch_size, -1, input_size)
 
     # (batch, out_len, in_len) * (batch, in_len, dim) -> (batch, out_len, dim)
     mix = torch.bmm(attn, context)

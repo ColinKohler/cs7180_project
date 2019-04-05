@@ -7,6 +7,7 @@
 - Better debugging visualizations for flow of info
 - Plot the loss/learning curves
 - Follow the composition graph from the output
+- Add variance pentalty across M_ts over time
 
 # Done:
 - Loss function  (MSE,NLL,...) 
