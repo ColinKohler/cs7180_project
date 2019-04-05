@@ -53,7 +53,7 @@ class RNMN(nn.Module):
     # Create visualizer
     self.visualizer = Visualizer(self.query_lang, self.attention_modules, self.answer_modules, self.comp_length)
 
-  def forward(self, query, query_len, context, debug=False, vis=False):
+  def forward(self, query, query_len, context, debug=False, vis=False, i=0):
     batch_size = query.size(0)
 
     # Encode the query and context
@@ -88,7 +88,7 @@ class RNMN(nn.Module):
       out = torch.einsum('bt,bti->bi', stop_mask, outs)
 
     if debug: ipdb.set_trace()
-    if vis: self.visualizer.saveGraph()
+    if vis: self.visualizer.saveGraph(str(i))
     return F.log_softmax(out, dim=1)
 
   def forward_1t(self, encoded_context, a_t, M_t, x_t, debug=False):

@@ -63,8 +63,9 @@ def train(config):
   # Close progress bar
   pbar.close()
 
-  samples, queries, query_lens, labels = test_loader.dataset[:1]
-  output, loss, correct = testBatch(model, criterion, samples, queries, query_lens, labels, vis=True)
+  for i in range(10):
+    samples, queries, query_lens, labels = test_loader.dataset[i:i+1]
+    output, loss, correct = testBatch(model, criterion, samples, queries, query_lens, labels, vis=True, i=0)
 
   plt.plot(test_accs)
   plt.show()
@@ -88,13 +89,13 @@ def trainBatch(model, optimizer, criterion, samples, queries, query_lens, labels
 
   return loss.item()
 
-def testBatch(model, criterion, samples, queries, query_lens, labels, debug=False, vis=False):
+def testBatch(model, criterion, samples, queries, query_lens, labels, debug=False, vis=False, i=0):
   model.eval()
   with torch.no_grad():
     # Transfer data to gpu/cpu and pass through model
     samples, queries, query_lens, labels = sortByQueryLen(samples, queries, query_lens, labels)
     samples, queries, query_lens, labels = tensorToDevice(samples, queries, query_lens, labels)
-    output = model(queries, query_lens, samples, vis=vis, debug=debug)
+    output = model(queries, query_lens, samples, vis=vis, debug=debug, i=i)
 
     # Compute loss & accuracy
     loss = criterion(output, labels.squeeze(1).long())
