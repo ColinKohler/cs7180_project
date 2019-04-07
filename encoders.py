@@ -37,7 +37,7 @@ class ContextEncoder(nn.Module):
     super(ContextEncoder, self).__init__()
 
     # Init two conv layers to extract features (64 kernels)
-    self.conv1 = nn.Conv2d(3, 64, 10, stride=10)
+    self.conv1 = nn.Conv2d(3, 64, 8, stride=8)
     self.conv2 = nn.Conv2d(64, 64, 2, stride=2)
 
   def forward(self, context):

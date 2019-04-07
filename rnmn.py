@@ -23,7 +23,7 @@ class RNMN(nn.Module):
     self.lstm_hidden_dim = lstm_hidden_dim
     self.map_dim = map_dim
     self.text_dim = 1
-    self.context_dim = [64, 3, 3]
+    self.context_dim = [64, 4, 4]
 
     self.comp_length = comp_length
     self.comp_stop_type = comp_stop_type
@@ -93,7 +93,8 @@ class RNMN(nn.Module):
     if debug: ipdb.set_trace()
     if vis: self.visualizer.saveGraph(str(i))
     M_std = torch.var(M,dim=0)
-    return F.log_softmax(out, dim=1), M_std
+    M_batch_std = torch.var(M,dim=1)
+    return F.log_softmax(out, dim=1), M_std, M_batch_std
 
   def forward_1t(self, encoded_context, a_t, M_t, x_t, debug=False):
     batch_size = encoded_context.size(0)
