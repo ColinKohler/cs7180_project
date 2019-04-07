@@ -94,9 +94,11 @@ def trainBatch(model, optimizer, criterion, samples, queries, query_lens, labels
   samples, queries, query_lens, labels = tensorToDevice(samples, queries, query_lens, labels)
   output, M_std, M_batch_std = model(queries, query_lens, samples, debug=debug)
 
+
   # Compute loss & step optimzer
+  #ipdb.set_trace()
   optimizer.zero_grad()
-  print("var across_time",torch.mean(M_std).item(),"var acros batch",torch.mean(M_batch_std).item())
+  #print("var across_time",torch.mean(M_std).item(),"var acros batch",torch.mean(M_batch_std).item())
   loss = getLoss(criterion, labels, (output, M_std, M_batch_std))
   loss.backward()
   nn.utils.clip_grad_norm_(model.parameters(), clip)
@@ -114,6 +116,7 @@ def testBatch(model, criterion, samples, queries, query_lens, labels, debug=Fals
 
     # Compute loss & accuracy
     loss = getLoss(criterion, labels, (output, M_std, M_batch_std)) 
+
     pred = output.argmax(dim=1, keepdim=True)
     correct = pred.eq(labels.view_as(pred).round().long()).sum()
 

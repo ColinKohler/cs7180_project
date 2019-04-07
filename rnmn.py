@@ -96,6 +96,7 @@ class RNMN(nn.Module):
     M_batch_std = torch.var(M,dim=1)
     return F.log_softmax(out, dim=1), M_std, M_batch_std
 
+
   def forward_1t(self, encoded_context, a_t, M_t, x_t, debug=False):
     batch_size = encoded_context.size(0)
     b_t = torch.zeros((batch_size, self.num_att_modules, self.context_dim[1], self.context_dim[2]), device=self.device)
