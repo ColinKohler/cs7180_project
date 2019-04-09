@@ -13,7 +13,7 @@ class Decoder(nn.Module):
     self.hidden_dim = hidden_dim
     self.num_layers = num_layers
     self.M_dim = M_dim
-    self.output_dim = M_dim[0] * M_dim[1]
+    self.output_dim = M_dim
     self.input_dim = self.output_dim
     self.mt_norm = mt_norm
 
@@ -40,16 +40,16 @@ class Decoder(nn.Module):
     out, attn_weights = self.attn(out, encoder_outputs, mask=mask.unsqueeze(1), temp=1.0)
 
     out = self.decode_head(out.view(batch_size, -1))
-    M = out.view(batch_size, self.M_dim[0], self.M_dim[1])
+    M = out.view(batch_size, self.M_dim)
 
     if (self.mt_norm == 1):
-      M = F.softmax(M/0.1, dim=1)
+      M = F.softmax(M/1.0, dim=1)
     elif (self.mt_norm == 2):
-      M = F.softmax(M.view(batch_size,-1), dim=1).view(batch_size, self.M_dim[0], self.M_dim[1])
+      M = F.softmax(M.view(batch_size,-1), dim=1).view(batch_size, self.M_dim)
     elif (self.mt_norm == 3):
       M = F.relu(M)
       tots = torch.clamp(torch.cumsum(M,dim=1)[:,-1],min=1).unsqueeze(1)
-      M = (M / tots).view(batch_size, self.M_dim[0], self.M_dim[1])
+      M = (M / tots).view(batch_size, self.M_dim)
 
     if debug: ipdb.set_trace()
     return M, attn_weights, torch.zeros((batch_size, 1))
