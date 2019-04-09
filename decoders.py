@@ -18,10 +18,16 @@ class Decoder(nn.Module):
 
     self.attn = Attention(self.hidden_dim, self.max_length)
 
-    self.composition_expand = nn.Linear(self.output_dim, self.hidden_dim)
+    # self.composition_expand = nn.Linear(self.output_dim, self.hidden_dim)
     self.dropout = nn.Dropout(dropout_prob)
     self.lstm = nn.LSTM(self.output_dim, self.hidden_dim, num_layers=self.num_layers, batch_first=True, dropout=0.5)
-    self.fc1 = nn.Linear(self.hidden_dim, self.output_dim)
+    self.decode_head = nn.Sequential(
+      nn.Linear(self.hidden_dim, 128),
+      nn.ReLU(),
+      nn.Linear(128, 32),
+      nn.ReLU(),
+      nn.Linear(32, self.output_dim)
+    )
 
   def forward(self, prev_M, encoder_outputs, query_len, debug=False):
     batch_size = prev_M.size(0)
@@ -30,19 +36,16 @@ class Decoder(nn.Module):
     # prev_M = self.composition_expand(prev_M)
     out, self.hidden = self.lstm(prev_M, self.hidden)
     mask = torch.arange(self.max_length, device=self.device).expand(len(query_len), self.max_length) >= query_len.unsqueeze(1)
-    out, attn_weights = self.attn(out, encoder_outputs, mask=mask.unsqueeze(1), temp=0.75)
+    out, attn_weights = self.attn(out, encoder_outputs, mask=mask.unsqueeze(1), temp=1.0)
 
-    out = self.fc1(out.view(batch_size, -1))
+    out = self.decode_head(out.view(batch_size, -1))
     M = out.view(batch_size, self.M_dim[0], self.M_dim[1])
 
     if (self.mt_norm == 1):
-      #   Train Loss:0.52322 | Test Loss:0.50811 | Test Acc:0.757:
-      M = F.softmax(M/0.75, dim=1)
+      M = F.softmax(M/1.0, dim=1)
     elif (self.mt_norm == 2):
-      #   Train Loss:0.44937 | Test Loss:0.49296 | Test Acc:0.753:
       M = F.softmax(M.view(batch_size,-1), dim=1).view(batch_size, self.M_dim[0], self.M_dim[1])
     elif (self.mt_norm == 3):
-      #   Train Loss:0.44780 | Test Loss:0.49603 | Test Acc:0.740:
       M = F.relu(M)
       tots = torch.clamp(torch.cumsum(M,dim=1)[:,-1],min=1).unsqueeze(1)
       M = (M / tots).view(batch_size, self.M_dim[0], self.M_dim[1])

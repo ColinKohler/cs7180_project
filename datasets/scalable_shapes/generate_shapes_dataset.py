@@ -20,7 +20,8 @@ def main(args):
   pixel_cell_size = int(args.sample_size / args.grid_size)
 
   # Generation junk
-  shape_generators = {'ellipse': generateRandomEllipse, 'plus': generateRandomPlus}
+  shape_generators = {'ellipse': generateRandomEllipse, 'plus': generateRandomPlus,
+                      'rectangle': generateRandomRect}
 
   for i in tqdm.trange(args.num_samples):
     # Generate sample grid
@@ -68,29 +69,29 @@ def main(args):
 
   # Save dataset
   if not args.debug:
-    np.save('./data/v4/samples.npy', samples)
-    np.save('./data/v4/queries.npy', queries)
-    np.save('./data/v4/labels.npy', labels)
+    np.save('./data/3x3_and_exists/samples.npy', samples)
+    np.save('./data/3x3_and_exists/queries.npy', queries)
+    np.save('./data/3x3_and_exists/labels.npy', labels)
 
 def generateQuery():
   ''' Generate query by combining all possible query parts '''
   # if npr.rand() > 0.1:
-  #   prop_1 = q_ast.generateRandomProperty()
-  #   prop_2 = q_ast.generateRandomProperty()
-  #   query = q_ast.Is(q_ast.generateRandomRelational(prop_1, prop_2))
+  # prop_1 = q_ast.generateRandomProperty()
+  # prop_2 = q_ast.generateRandomProperty()
+  # query = q_ast.Is(q_ast.generateRandomRelational(prop_1, prop_2))
   # else:
   query = q_ast.Is(q_ast.generateRandomProperty())
 
   return query
-  
-def generateFullRandomQuery(max_depth, 
+
+def generateFullRandomQuery(max_depth,
       ops = [q_ast.Property(),q_ast.Shape(),q_ast.Color(),q_ast.And(),q_ast.Or(),q_ast.Left()
       ,q_ast.Right(),q_ast.Above(),q_ast.Below()],
       prob = [0.2,0.15,0.15,0.13,0.13,0.06,0.06,0.06,0.06]):
-  query = q_ast.Is()  
+  query = q_ast.Is()
   query.sample(max_depth-1, ops, prob)
   return query
-  
+
 def generateRelationalAndQuery(len):
   prop_1 = q_ast.generateRandomNullary()
   prop_2 = q_ast.generateRandomNullary()
@@ -165,6 +166,26 @@ def generateRandomEllipse(cell_size, color):
   # Draw the ellipse and set its color
   cell_img = np.zeros((cell_size, cell_size, 3))
   rr, cc = skimage.draw.ellipse(cx, cy, r_major, r_minor, shape=cell_img.shape[:2])
+  cell_img[rr,cc,:] = color
+
+  return cell_img
+
+def generateRandomRect(cell_size, color):
+  default_width = cell_size / 2
+  default_height = cell_size / 2
+  center = cell_size / 2
+
+  # Generate center, width, and height with noise
+  cx = int(center + int(npr.normal(0, cell_size/12)))
+  cy = int(center + int(npr.normal(0, cell_size/12)))
+  width = int(default_width + int(npr.normal(0, cell_size/8)))
+  height = int(default_height + int(npr.normal(0, cell_size/8)))
+
+  # Draw the plus and set its color
+  cell_img = np.zeros((cell_size, cell_size, 3))
+  rr, cc = skimage.draw.rectangle([int(cx-height/2), int(cy-width/2)],
+                                    extent=[height, width],
+                                    shape=cell_img.shape[:2])
   cell_img[rr,cc,:] = color
 
   return cell_img

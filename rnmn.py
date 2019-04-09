@@ -23,7 +23,7 @@ class RNMN(nn.Module):
     self.lstm_hidden_dim = lstm_hidden_dim
     self.map_dim = map_dim
     self.text_dim = self.embed_dim
-    self.context_dim = [64, 6, 6]
+    self.context_dim = [64, 3, 3]
 
     self.comp_length = comp_length
     self.comp_stop_type = comp_stop_type
@@ -71,7 +71,6 @@ class RNMN(nn.Module):
     for t in range(self.comp_length):
       if debug: ipdb.set_trace()
       M_t, attn, stop_bits = self.decoder(M_t.view(batch_size, 1, self.M_dim[0]*self.M_dim[1]), encoded_query, query_len, debug=debug)
-      # x_t = torch.sum(torch.bmm(attn, embedded_query), dim=2)
       x_t = torch.bmm(attn, embedded_query)
       b_t, a_tp1, out = self.forward_1t(encoded_context, a_t, M_t, x_t, debug=debug)
 

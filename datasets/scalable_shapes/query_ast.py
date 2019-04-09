@@ -15,8 +15,9 @@ COLOR_PROPERTY_INTS = {'red': RED, 'green': GREEN, 'blue': BLUE}
 
 ELLIPSE = 1
 PLUS = 2
-SHAPE_PROPERTY_STRS = {ELLIPSE : 'ellipse', PLUS : 'plus'}
-SHAPE_PROPERTY_INTS = {'ellipse': ELLIPSE, 'plus': PLUS}
+RECT = 3
+SHAPE_PROPERTY_STRS = {ELLIPSE : 'ellipse', PLUS : 'plus', RECT: 'rectangle'}
+SHAPE_PROPERTY_INTS = {'ellipse': ELLIPSE, 'plus': PLUS, 'rectangle': RECT}
 
 class Op(object):
   def eval(self, sample):
@@ -39,7 +40,7 @@ class Op(object):
 class NullaryOp(Op):
   def __init__(self, value = None):
     self.value = value
-    
+
 class Color(NullaryOp):
   def eval(self, sample):
     return sample[0] == self.value
@@ -83,7 +84,7 @@ class Property(NullaryOp):  #Value is assumed to be a list.
 class UnaryOp(Op):
   def __init__(self, input = None):
     self.input = input
-    
+
   def sample(self, depth, ops, prob):
     if depth == 0:
       self.input = generateRandomNullary()
@@ -209,14 +210,14 @@ class Near(BinaryOp):
 #                                 Helpers                                     #
 #=============================================================================#
 def generateRandomProperty():
-  rand = npr.randint(2)
-  if rand == 0:
-    return Property([Color(npr.choice(list(COLOR_PROPERTY_INTS.values()))),
+  # rand = npr.randint(2)
+  # if rand == 0:
+  return Property([Color(npr.choice(list(COLOR_PROPERTY_INTS.values()))),
                      Shape(npr.choice(list(SHAPE_PROPERTY_INTS.values())))])
-  if rand == 0:
-    return Property([Color(npr.choice(list(COLOR_PROPERTY_INTS.values())))])
-  else:
-    return Property([Shape(npr.choice(list(SHAPE_PROPERTY_INTS.values())))])
+  # if rand == 1:
+  #   return Property([Color(npr.choice(list(COLOR_PROPERTY_INTS.values())))])
+  # else:
+  #   return Property([Shape(npr.choice(list(SHAPE_PROPERTY_INTS.values())))])
 
 def generateRandomNullary():
   rand = npr.randint(3)
@@ -230,7 +231,7 @@ def generateRandomNullary():
     return Color(npr.choice(list(COLOR_PROPERTY_INTS.values())))
   elif rand == 2:
     return Shape(npr.choice(list(SHAPE_PROPERTY_INTS.values())))
-  
+
 def generateRandomRelational(prop_1, prop_2):
   relational = npr.choice([Above, Below, Left, Right])
   return relational(prop_1, prop_2)

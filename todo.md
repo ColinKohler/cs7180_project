@@ -1,16 +1,17 @@
 # TODO:
-- Init input to decoder could be improved
-- Improve x_t (query attention mapping)
 - Test to see if a type of query is causing problems
 - Examine gradients/weights (M_t) to check if all modules are getting used
 - Add thresholding to output
-- Better debugging visualizations for flow of info
-- Plot the loss/learning curves
-- Follow the composition graph from the output
 - Add variance pentalty across M_ts over time
+- Make exists dumber
 
 # Done:
+- Init input to decoder could be improved
+- Improve x_t (query attention mapping)
+- Better debugging visualizations for flow of info
+- Follow the composition graph from the output
 - Loss function  (MSE,NLL,...) 
+- Plot the loss/learning curves
 - Init a_t with noise for better learning
 - Input to decode: Started as 0s, temporarly init with random and out->in
 - Added attention to the decoder (started with hidden_n, then hidden_end_query, final soft hidden_n)
