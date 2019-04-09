@@ -31,16 +31,20 @@ def train(config):
   criterion = nn.NLLLoss()
 
   # Create TQDM progress bar
-  pbar = tqdm.tqdm(total=config.epochs)
+  pbar = tqdm.tqdm(total=config.epochs,position=0)
+  pbar2 = tqdm.tqdm(total=0,position=1)
   pbar.set_description('Train Loss:0.0 | Train Acc:0.0 | Test Loss:0.0 | Test Acc:0.0')
+  pbar2.set_description('M_t Std Dev:0.0 | M Batch Std Dev:0.0 | Reg Loss:0.0')
+
 
   train_losses, test_losses, test_accs = list(), list(), list()
   for epoch in range(config.epochs):
     # Train for a single epoch iterating over the minibatches
     train_loss = 0
     for samples, queries, query_lens, labels in train_loader:
-      train_loss += trainBatch(model, optimizer, criterion, samples, queries,
-                               query_lens, labels, debug=config.debug)
+      batch_train_loss, std_dev, batch_std_dev, reg_loss = trainBatch(model, optimizer,
+                    criterion, samples, queries, query_lens, labels, debug=config.debug)
+      train_loss += batch_train_loss
 
     # Test for a single epoch iterating over the minibatches
     test_loss, test_correct = 0, 0
@@ -58,12 +62,18 @@ def train(config):
     # Update progress bar
     pbar.set_description('Train Loss:{:.5f} | Test Loss:{:.5f} | Test Acc:{:.3f}'.format(
       train_losses[-1], test_losses[-1], test_accs[-1]))
+    pbar2.set_description('M_t Std Dev:{:.5f} | M Batch Std Dev:{:.5f} | Reg Loss:{:.5f}'.format(
+      std_dev, batch_std_dev, reg_loss))  
     pbar.update(1)
+    pbar2.update(0)
 
   # Close progress bar
   pbar.close()
+  pbar2.close()
 
-  for i in range(5):
+  print("\n\n")
+  for i in range(2):
+    print("Generating Computation Graph {}/5".format(i+1))
     samples, queries, query_lens, labels = test_loader.dataset[i:i+1]
     output, loss, correct = testBatch(model, criterion, samples, queries, query_lens, labels, vis=True, i=i)
 
@@ -85,7 +95,7 @@ def MtRegularization(M_std, target_sigma = 0.5, divisor = 5000.0):
 def getLoss(criterion, labels, output_tuple):
   output, M_std, M_batch_std = output_tuple
   #print(criterion(output, labels.squeeze().long()),MtRegularization(M_std, target_sigma=0.4),MtRegularization(M_batch_std[:3], target_sigma=0.4 divisor=25))
-  return criterion(output, labels.squeeze().long()) +  0.25 * MtRegularization(M_std, target_sigma=0.4) + 0.25 *  MtRegularization(M_batch_std[:3], target_sigma=0.4, divisor=25)
+  return criterion(output, labels.squeeze(1).long()) +  0.25 * MtRegularization(M_std, target_sigma=0.4) + 0.25 *  MtRegularization(M_batch_std[:3], target_sigma=0.4, divisor=25)
 
 def trainBatch(model, optimizer, criterion, samples, queries, query_lens, labels, clip=10, debug=False):
   model.train()
@@ -96,15 +106,15 @@ def trainBatch(model, optimizer, criterion, samples, queries, query_lens, labels
 
 
   # Compute loss & step optimzer
-  #ipdb.set_trace()
   optimizer.zero_grad()
   #print("var across_time",torch.mean(M_std).item(),"var acros batch",torch.mean(M_batch_std).item())
   loss = getLoss(criterion, labels, (output, M_std, M_batch_std))
   loss.backward()
   nn.utils.clip_grad_norm_(model.parameters(), clip)
   optimizer.step()
+  reg_loss = loss.item()-criterion(output, labels.squeeze(1).long()).item()
 
-  return loss.item()
+  return loss.item(),torch.mean(M_std).item(),torch.mean(M_batch_std).item(),reg_loss
 
 def testBatch(model, criterion, samples, queries, query_lens, labels, debug=False, vis=False, i=0):
   model.eval()

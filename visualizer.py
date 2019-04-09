@@ -2,6 +2,7 @@ import shutil
 import os, sys
 import pygraphviz as pgv
 import matplotlib.pyplot as plt
+import numpy as np
 
 class Visualizer(object):
   def __init__(self, query_lang, attention_modules, answer_modules, comp_length):
@@ -51,7 +52,11 @@ class Visualizer(object):
 
     # Add composition matrix node
     if step < self.comp_length - 1:
-      self.G.add_node('M_{}'.format(step), labelloc='m', label='M_{}:\n{}'.format(step, M_t.cpu().numpy().transpose().squeeze()))
+      M_t_string = self.matrixToString(M_t.cpu().numpy().transpose().squeeze(), 
+                                      self.module_output_names, self.module_input_names)
+      
+      
+      self.G.add_node('M_{}'.format(step), labelloc='m', label='M_{}:\n{}'.format(step, M_t_string))
 
     # If not the first timestep connect input attention to past
     # compositional and output attention nodes
@@ -68,7 +73,7 @@ class Visualizer(object):
 
     plt.figure()
     plt.title(self.query_lang.decodeQuery(query.cpu().squeeze()))
-    plt.imshow(sample[0].cpu().permute(1,2,0), cmap='gray')
+    plt.imshow(sample[0].cpu().permute(1,2,0).clamp(0,1), cmap='gray')
     plt.savefig(path)
     plt.close()
 
@@ -91,5 +96,17 @@ class Visualizer(object):
     plt.tight_layout(True)
     plt.savefig(path)
     plt.close()
-
     return path
+    
+  def matrixToString(self, matrix, col_names, row_names):
+    matrix_list = np.ndarray.tolist(matrix)
+    str_list = [["{:.2f}".format(e) for e in l] for l in matrix_list]
+    for r,rn in zip(str_list,row_names):
+      (r.append("| -> "+rn+"\n"))
+    col_string = " ".join(col_names)+"\n"
+    return col_string+" ".join(["|  "+" ".join(l) for l in str_list])
+    
+    
+    
+
+    

@@ -129,7 +129,7 @@ class RNMN(nn.Module):
     return b_t, a_tp1, out
 
   def saveModel(self, save_path):
-    torch.save(self.state_dict(), path)
+    torch.save(self.state_dict(), save_path)
 
   def loadModel(self, path):
     self.load_state_dict(torch.load(path))
