@@ -67,7 +67,8 @@ def train(config):
   pbar.close()
 
   for i in range(5):
-    samples, queries, query_lens, labels = test_loader.dataset[i:i+1]
+    rand_idx = torch.randint(len(test_loader.dataset), (1,))
+    samples, queries, query_lens, labels = test_loader.dataset[rand_idx]
     output, loss, correct = testBatch(model, criterion, samples, queries, query_lens, labels, vis=True, i=i)
 
   model.saveModel('models/text.pt')

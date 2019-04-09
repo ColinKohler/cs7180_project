@@ -73,7 +73,7 @@ class Relocate(nn.Module):
 
     self.context_dim = context_dim
     self.map_dim = map_dim
-    self.kernel_size = 1
+    self.kernel_size = 3
     self.text_dim = text_dim
 
     # conv2(conv1(xvis) * W1*sum(a * xvis) * W2*xtxt)

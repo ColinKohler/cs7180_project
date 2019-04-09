@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+import numpy as np
 import ipdb
 
 class Decoder(nn.Module):
@@ -22,11 +23,11 @@ class Decoder(nn.Module):
     self.dropout = nn.Dropout(dropout_prob)
     self.lstm = nn.LSTM(self.output_dim, self.hidden_dim, num_layers=self.num_layers, batch_first=True, dropout=0.5)
     self.decode_head = nn.Sequential(
-      nn.Linear(self.hidden_dim, 128),
-      nn.ReLU(),
-      nn.Linear(128, 32),
-      nn.ReLU(),
-      nn.Linear(32, self.output_dim)
+      nn.Linear(self.hidden_dim, self.output_dim),
+      # nn.ReLU(),
+      # nn.Linear(128, 32),
+      # nn.ReLU(),
+      # nn.Linear(32, self.output_dim)
     )
 
   def forward(self, prev_M, encoder_outputs, query_len, debug=False):
@@ -42,7 +43,7 @@ class Decoder(nn.Module):
     M = out.view(batch_size, self.M_dim[0], self.M_dim[1])
 
     if (self.mt_norm == 1):
-      M = F.softmax(M/1.0, dim=1)
+      M = F.softmax(M/0.1, dim=1)
     elif (self.mt_norm == 2):
       M = F.softmax(M.view(batch_size,-1), dim=1).view(batch_size, self.M_dim[0], self.M_dim[1])
     elif (self.mt_norm == 3):
