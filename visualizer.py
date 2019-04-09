@@ -80,7 +80,7 @@ class Visualizer(object):
 
     # Plot each attention map with the module name as given
     fig, ax = plt.subplots(nrows=1, ncols=num_attention, figsize=(8, 4))
-    for i, axi in enumerate(ax.flat):
+    for i, axi in enumerate([ax]):
       if attn_type == 'input':
         axi.set_title(self.module_input_names[i])
       else:
