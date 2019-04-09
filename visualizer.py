@@ -79,13 +79,13 @@ class Visualizer(object):
     path = 'vis_tmp/{}_attention_{}.png'.format(attn_type, step)
 
     # Plot each attention map with the module name as given
-    fig, ax = plt.subplots(nrows=1, ncols=num_attention, figsize=(8, 4))
-    for i, axi in enumerate([ax]):
-      if attn_type == 'input':
-        axi.set_title(self.module_input_names[i])
-      else:
-        axi.set_title(self.module_output_names[i])
-      axi.imshow(a[0,i].cpu(), cmap='gray', vmin=0.0, vmax=1.0)
+    # fig, ax = plt.subplots(nrows=1, ncols=num_attention, figsize=(8, 4))
+    plt.figure()
+    # if attn_type == 'input':
+    #   plt.title(self.module_input_names[i])
+    # else:
+    #   plt.title(self.module_output_names[i])
+    plt.imshow(a[0].cpu(), cmap='gray', vmin=0.0, vmax=1.0)
 
     # Save the figure to a temp file
     plt.tight_layout(True)
