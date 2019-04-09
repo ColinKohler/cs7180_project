@@ -46,7 +46,7 @@ class RNMN(nn.Module):
     self.context_encoder = ContextEncoder()
 
     # Create decoder
-    self.M_dim = (self.num_att_modules, sum([m.num_attention_maps for m in self.attention_modules + self.answer_modules]))
+    self.M_dim = self.num_att_modules
     self.decoder = Decoder(self.max_query_len, self.lstm_hidden_dim, self.M_dim,
                            self.device, num_layers=self.num_layers, mt_norm=mt_norm)
 
@@ -62,16 +62,16 @@ class RNMN(nn.Module):
     encoded_context = self.context_encoder(context)
 
     # Loop over timesteps using modules until a threshold is met
-    a_t = torch.zeros((batch_size, self.M_dim[1], self.context_dim[1], self.context_dim[2]), device=self.device)
-    M_t = torch.zeros((batch_size, self.M_dim[0], self.M_dim[1]), device=self.device)
-    M = torch.zeros((self.comp_length, batch_size, self.M_dim[0], self.M_dim[1]), device=self.device)
+    a_t = torch.ones((batch_size, self.context_dim[1], self.context_dim[2]), device=self.device)
+    M_t = torch.zeros((batch_size, self.M_dim), device=self.device)
+    M = torch.zeros((self.comp_length, batch_size, self.M_dim), device=self.device)
 
     stop_mask = torch.zeros((batch_size, self.comp_length), device=self.device)
     outs = torch.zeros((batch_size, self.comp_length, 2), device=self.device)
 
     for t in range(self.comp_length):
       if debug: ipdb.set_trace()
-      M_t, attn, stop_bits = self.decoder(M_t.view(batch_size, 1, self.M_dim[0]*self.M_dim[1]), encoded_query, query_len, debug=debug)
+      M_t, attn, stop_bits = self.decoder(M_t.view(batch_size, self.M_dim), encoded_query, query_len, debug=debug)
       M[t] = M_t
       x_t = torch.sum(torch.bmm(attn, embedded_query), dim=-1)
       b_t, a_tp1, out = self.forward_1t(encoded_context, a_t, M_t, x_t, debug=debug)
