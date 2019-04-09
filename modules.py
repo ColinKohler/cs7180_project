@@ -37,6 +37,9 @@ class Id(nn.Module):
   def forward(self, input):
     return F.relu(input)
 
+
+
+
 ###########################################################################################################################################
 #                                                         Complex Modules                                                                 #
 ###########################################################################################################################################
@@ -88,6 +91,20 @@ class Relocate(nn.Module):
     attention_mapped = F.relu(self.conv1(attention))
     eltwise_mult = F.normalize(text_mapped * attention_mapped, dim=1)
     return self.sigmoid(self.conv2(eltwise_mult))
+    
+
+class Filter(nn.Module):
+  def __init__(self, context_dim, map_dim=64, text_dim=1):
+    super(Filter, self).__init__()
+    self.num_attention_maps = 1
+    self.name = 'Filter'
+    self.Find = Find(context_dim, map_dim=64, text_dim=1)
+    self.And = And
+
+  def forward(self, attention, context, text):
+    # Combine And and Find
+    find_atten = self.Find(context, text)
+    return self.And(torch.stack([find_atten,attention],dim=1))
 
 ###########################################################################################################################################
 #                                                          Answer Modules                                                                 #
