@@ -119,14 +119,14 @@ class Exist(nn.Module):
     self.input_dim = input_dim
 
     # W * vec(a)
-    # self.fc1 = nn.Linear(input_dim[-1]**2, 2)
-    self.fc1 = nn.Linear(1, 2)
+    self.fc1 = nn.Linear(input_dim[-1]**2, 2)
+    # self.fc1 = nn.Linear(1, 2)
 
   def forward(self, attention):
     batch_size = attention.size(0)
 
-    attention = attention.reshape(batch_size, -1)
-    max = torch.max(attention, dim=1)[0].view(batch_size, 1)
+    # attention = attention.reshape(batch_size, -1)
+    # max = torch.max(attention, dim=1)[0].view(batch_size, 1)
 
-    return self.fc1(max)
-    # return self.fc1(attention.reshape(batch_size, -1))
+    # return self.fc1(max)
+    return self.fc1(attention.reshape(batch_size, -1))

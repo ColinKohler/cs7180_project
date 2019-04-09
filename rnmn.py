@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import ipdb
 
 from visualizer import Visualizer
-from modules import And, Or, Id, Find, Relocate, Exist
+from modules import And, Or, Id, Find, Filter, Relocate, Exist
 from encoders import QueryEncoder, ContextEncoder
 from decoders import Decoder
 
@@ -22,7 +22,7 @@ class RNMN(nn.Module):
     self.num_layers = num_layers
     self.lstm_hidden_dim = lstm_hidden_dim
     self.map_dim = map_dim
-    self.text_dim = 1
+    self.text_dim = map_dim
     self.context_dim = [64, 3, 3]
 
     self.comp_length = comp_length
@@ -31,11 +31,11 @@ class RNMN(nn.Module):
     self.max_query_len = query_lang.max_len
 
     # Create attention and answer modules
-    self.find = Find(self.context_dim, map_dim=self.map_dim, text_dim=self.text_dim)
+    self.filter = Filter(self.context_dim, map_dim=self.map_dim, text_dim=self.text_dim)
     self.relocate = Relocate(self.context_dim, map_dim=self.map_dim, text_dim=self.text_dim)
     self.exist = Exist(self.context_dim)
 
-    self.attention_modules = [And(), self.find, self.relocate]
+    self.attention_modules = [self.filter, self.relocate]
     self.num_att_modules = len(self.attention_modules)
     self.answer_modules = [self.exist]
     [module.to(self.device) for module in self.attention_modules + self.answer_modules]
@@ -73,7 +73,7 @@ class RNMN(nn.Module):
       if debug: ipdb.set_trace()
       M_t, attn, stop_bits = self.decoder(M_t.view(batch_size, self.M_dim), encoded_query, query_len, debug=debug)
       M[t] = M_t
-      x_t = torch.sum(torch.bmm(attn, embedded_query), dim=-1)
+      x_t = torch.bmm(attn, embedded_query)
       b_t, a_tp1, out = self.forward_1t(encoded_context, a_t, M_t, x_t, debug=debug)
 
       if vis:
@@ -100,31 +100,19 @@ class RNMN(nn.Module):
     batch_size = encoded_context.size(0)
     b_t = torch.zeros((batch_size, self.num_att_modules, self.context_dim[1], self.context_dim[2]), device=self.device)
 
-    # Attention map indexs
-    num_att_map_inputs = [module.num_attention_maps for module in self.attention_modules + self.answer_modules]
-    attention_map_input_index = np.cumsum(num_att_map_inputs)
-    attention_map_input_index = np.insert(attention_map_input_index, 0, 0)
-
     # Run all attention modules saving output
     for i, module in enumerate(self.attention_modules + self.answer_modules):
-      attention = a_t[:,np.arange(attention_map_input_index[i],attention_map_input_index[i+1])]
-      if type(module) is Id:
-        b_t[:,i] = module.forward(attention.squeeze())
-      elif type(module) is And:
-        b_t[:,i] = module.forward(attention)
-      elif type(module) is Or:
-        b_t[:,i] = module.forward(attention)
-      elif type(module) is Find:
-        b_t[:,i] = module.forward(encoded_context, x_t).squeeze(1)
+      if type(module) is Filter:
+        b_t[:,i] = module.forward(a_t, encoded_context, x_t).squeeze(1)
       elif type(module) is Relocate:
-        b_t[:,i] = module.forward(attention, x_t).squeeze(1)
+        b_t[:,i] = module.forward(a_t, x_t).squeeze(1)
       elif type(module) is Exist:
-        out = module.forward(attention)
+        out = module.forward(a_t)
       else:
         raise ValueError('Invalid Module: {}'.format(type(module)))
 
     if debug: ipdb.set_trace()
-    a_tp1 = torch.einsum('bkij,bkl->blij', b_t, M_t)
+    a_tp1 = torch.einsum('bkij,bk->bij', b_t, M_t)
     return b_t, a_tp1, out
 
   def saveModel(self, path):
