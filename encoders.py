@@ -16,7 +16,7 @@ class QueryEncoder(nn.Module):
 
     self.word_embeddings = nn.Embedding(self.input_dim, self.embed_dim)
     self.dropout = nn.Dropout(dropout_prob)
-    self.lstm = nn.LSTM(self.embed_dim, self.hidden_dim, num_layers=self.num_layers, batch_first=True)
+    self.lstm = nn.LSTM(self.embed_dim, self.hidden_dim, num_layers=self.num_layers, batch_first=True, dropout=0.5)
 
   def resetHidden(self, batch_dim):
     self.hidden = (torch.zeros(self.num_layers, batch_dim, self.hidden_dim).to(self.device),
@@ -38,7 +38,7 @@ class ContextEncoder(nn.Module):
 
     # Init two conv layers to extract features (64 kernels)
     self.conv1 = nn.Conv2d(3, 64, 10, stride=10)
-    self.conv2 = nn.Conv2d(64, 64, 2, stride=2)
+    self.conv2 = nn.Conv2d(64, 64, 1, stride=1)
 
   def forward(self, context):
     return F.relu(self.conv2(F.relu(self.conv1(context))))

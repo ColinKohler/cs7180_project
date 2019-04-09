@@ -16,22 +16,22 @@ class Decoder(nn.Module):
     self.input_dim = self.output_dim
     self.mt_norm = mt_norm
 
-    self.attn = Attention(self.hidden_dim)
+    self.attn = Attention(self.hidden_dim, self.max_length)
 
     self.composition_expand = nn.Linear(self.output_dim, self.hidden_dim)
     self.dropout = nn.Dropout(dropout_prob)
-    self.lstm = nn.LSTM(self.hidden_dim, self.hidden_dim, num_layers=self.num_layers, batch_first=True)
+    self.lstm = nn.LSTM(self.output_dim, self.hidden_dim, num_layers=self.num_layers, batch_first=True, dropout=0.5)
     self.fc1 = nn.Linear(self.hidden_dim, self.output_dim)
 
   def forward(self, prev_M, encoder_outputs, query_len, debug=False):
     batch_size = prev_M.size(0)
     prev_M = self.dropout(prev_M)
 
-    prev_M = self.composition_expand(prev_M)
+    # prev_M = self.composition_expand(prev_M)
+    out, self.hidden = self.lstm(prev_M, self.hidden)
     mask = torch.arange(self.max_length, device=self.device).expand(len(query_len), self.max_length) >= query_len.unsqueeze(1)
-    out, attn_weights = self.attn(prev_M, encoder_outputs, mask=mask.unsqueeze(1), temp=1.0)
+    out, attn_weights = self.attn(out, encoder_outputs, mask=mask.unsqueeze(1), temp=0.75)
 
-    out, self.hidden = self.lstm(F.relu(out), self.hidden)
     out = self.fc1(out.view(batch_size, -1))
     M = out.view(batch_size, self.M_dim[0], self.M_dim[1])
 
@@ -55,10 +55,12 @@ class Decoder(nn.Module):
             torch.zeros(self.num_layers, batch_size, self.hidden_dim).to(self.device))
 
 class Attention(nn.Module):
-  def __init__(self, hidden_dim):
+  def __init__(self, hidden_dim, max_length):
     super(Attention, self).__init__()
 
     self.hidden_dim = hidden_dim
+    self.max_length = max_length
+
     self.linear_out = nn.Linear(self.hidden_dim*2, self.hidden_dim)
     self.tanh = nn.Tanh()
 

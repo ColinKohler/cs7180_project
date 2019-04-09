@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+import ipdb
+
 ###########################################################################################################################################
 #                                                         Logical Modules                                                                 #
 ###########################################################################################################################################
@@ -76,22 +78,16 @@ class Relocate(nn.Module):
 
     # conv2(conv1(xvis) * W1*sum(a * xvis) * W2*xtxt)
     self.fc1 = nn.Linear(self.text_dim, self.map_dim)
-    self.fc2 = nn.Linear(self.context_dim[0], self.map_dim)
-    self.conv1 = nn.Conv2d(self.context_dim[0], self.map_dim, 1)
+    self.conv1 = nn.Conv2d(1, self.map_dim, self.kernel_size)
     self.conv2 = nn.Conv2d(self.map_dim, 1, 1)
+    self.sigmoid = nn.Sigmoid()
 
-  def forward(self, attention, context, text):
+  def forward(self, attention, text):
     batch_size = attention.shape[0]
     text_mapped = F.relu(self.fc1(text.view(batch_size, -1)).view(batch_size, self.map_dim, 1, 1))
-    context_mapped = F.relu(self.conv1(context))
-
-    attention_softmax = F.softmax(attention.view(batch_size, -1), dim=1)
-    attention_softmax = attention_softmax.view(batch_size, 1, self.context_dim[1], self.context_dim[2])
-    attention = torch.sum(context * attention_softmax, dim=[2,3])
-    attention_mapped = F.sigmoid(self.fc2(attention)).view(batch_size, self.map_dim, 1, 1)
-
-    eltwise_mult = F.normalize(context_mapped * text_mapped * attention_mapped)
-    return F.sigmoid(self.conv2(eltwise_mult))
+    attention_mapped = F.relu(self.conv1(attention))
+    eltwise_mult = F.normalize(text_mapped * attention_mapped, dim=1)
+    return self.sigmoid(self.conv2(eltwise_mult))
 
 ###########################################################################################################################################
 #                                                          Answer Modules                                                                 #
@@ -106,8 +102,14 @@ class Exist(nn.Module):
     self.input_dim = input_dim
 
     # W * vec(a)
-    self.fc1 = nn.Linear(input_dim[-1]**2, 2)
+    # self.fc1 = nn.Linear(input_dim[-1]**2, 2)
+    self.fc1 = nn.Linear(1, 2)
 
   def forward(self, attention):
     batch_size = attention.size(0)
-    return self.fc1(attention.reshape(batch_size, -1))
+
+    attention = attention.reshape(batch_size, -1)
+    max = torch.max(attention, dim=1)[0].view(batch_size, 1)
+
+    return self.fc1(max)
+    # return self.fc1(attention.reshape(batch_size, -1))

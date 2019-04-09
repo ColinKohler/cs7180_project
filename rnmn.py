@@ -22,8 +22,8 @@ class RNMN(nn.Module):
     self.num_layers = num_layers
     self.lstm_hidden_dim = lstm_hidden_dim
     self.map_dim = map_dim
-    self.text_dim = 1
-    self.context_dim = [64, 3, 3]
+    self.text_dim = self.embed_dim
+    self.context_dim = [64, 6, 6]
 
     self.comp_length = comp_length
     self.comp_stop_type = comp_stop_type
@@ -35,7 +35,7 @@ class RNMN(nn.Module):
     self.relocate = Relocate(self.context_dim, map_dim=self.map_dim, text_dim=self.text_dim)
     self.exist = Exist(self.context_dim)
 
-    self.attention_modules = [And(), self.find]# , self.relocate]
+    self.attention_modules = [And(), self.find, self.relocate]
     self.num_att_modules = len(self.attention_modules)
     self.answer_modules = [self.exist]
     [module.to(self.device) for module in self.attention_modules + self.answer_modules]
@@ -71,7 +71,8 @@ class RNMN(nn.Module):
     for t in range(self.comp_length):
       if debug: ipdb.set_trace()
       M_t, attn, stop_bits = self.decoder(M_t.view(batch_size, 1, self.M_dim[0]*self.M_dim[1]), encoded_query, query_len, debug=debug)
-      x_t = torch.sum(torch.bmm(attn, embedded_query), dim=2)
+      # x_t = torch.sum(torch.bmm(attn, embedded_query), dim=2)
+      x_t = torch.bmm(attn, embedded_query)
       b_t, a_tp1, out = self.forward_1t(encoded_context, a_t, M_t, x_t, debug=debug)
 
       if vis:
@@ -112,7 +113,7 @@ class RNMN(nn.Module):
       elif type(module) is Find:
         b_t[:,i] = module.forward(encoded_context, x_t).squeeze(1)
       elif type(module) is Relocate:
-        b_t[:,i] = module.forward(attention, encoded_context, x_t).squeeze(1)
+        b_t[:,i] = module.forward(attention, x_t).squeeze(1)
       elif type(module) is Exist:
         out = module.forward(attention)
       else:
@@ -122,7 +123,7 @@ class RNMN(nn.Module):
     a_tp1 = torch.einsum('bkij,bkl->blij', b_t, M_t)
     return b_t, a_tp1, out
 
-  def saveModel(self, save_path):
+  def saveModel(self, path):
     torch.save(self.state_dict(), path)
 
   def loadModel(self, path):

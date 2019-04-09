@@ -42,7 +42,7 @@ class Visualizer(object):
 
     # Add attn and text input nodes and edges
     self.G.add_node('x_{}'.format(step), labelloc='m',
-                    label='attn_{}: {}\nx_{}: {}'.format(step, attn_t.cpu().numpy().squeeze(), step, x_t.cpu().numpy().squeeze()))
+                    label='attn_{}: {}'.format(step, attn_t.cpu().numpy().squeeze().round(3)))# , step, x_t.cpu().numpy().squeeze()))
     self.G.add_edge('x_{}'.format(step), 'b_{}'.format(step))
 
     # Add output node and edge
@@ -51,7 +51,7 @@ class Visualizer(object):
 
     # Add composition matrix node
     if step < self.comp_length - 1:
-      self.G.add_node('M_{}'.format(step), labelloc='m', label='M_{}:\n{}'.format(step, M_t.cpu().numpy().transpose().squeeze()))
+      self.G.add_node('M_{}'.format(step), labelloc='m', label='M_{}:\n{}'.format(step, M_t.cpu().numpy().transpose().squeeze().round(3)))
 
     # If not the first timestep connect input attention to past
     # compositional and output attention nodes
