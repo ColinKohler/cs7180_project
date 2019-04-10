@@ -87,8 +87,8 @@ def MtRegularization(M_std, target_sigma = 0.5, divisor = 5000.0):
 
 def getLoss(criterion, labels, output_tuple):
   output, M_std, M_batch_std = output_tuple
-  #print(criterion(output, labels.squeeze().long()),MtRegularization(M_std, target_sigma=0.4),MtRegularization(M_batch_std[:3], target_sigma=0.4 divisor=25))
-  return criterion(output, labels.squeeze().long()) +  0.25 * MtRegularization(M_std, target_sigma=0.4) + 0.25 *  MtRegularization(M_batch_std[:3], target_sigma=0.4, divisor=25)
+  #print(criterion(output, labels.squeeze().long()),MtRegularization(M_std, target_sigma=0.4),MtRegularization(M_batch_std[:3], target_sigma=0.4, divisor=25))
+  return criterion(output, labels.squeeze().long()) +  1 * MtRegularization(M_std, target_sigma=0.5) + 1 *  MtRegularization(M_batch_std[:3], target_sigma=0.5, divisor=25)
 
 def trainBatch(model, optimizer, criterion, samples, queries, query_lens, labels, clip=10, debug=False):
   model.train()

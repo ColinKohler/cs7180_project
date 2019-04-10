@@ -23,7 +23,7 @@ class RNMN(nn.Module):
     self.lstm_hidden_dim = lstm_hidden_dim
     self.map_dim = map_dim
     self.text_dim = embed_dim
-    self.context_dim = [64, 3, 3]
+    self.context_dim = [64, 6, 6]
 
     self.comp_length = comp_length
     self.comp_stop_type = comp_stop_type

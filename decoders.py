@@ -50,6 +50,8 @@ class Decoder(nn.Module):
       M = F.relu(M)
       tots = torch.clamp(torch.cumsum(M,dim=1)[:,-1],min=1).unsqueeze(1)
       M = (M / tots).view(batch_size, self.M_dim)
+    elif (self.mt_norm == 4):
+      M = F.sigmoid(M)
 
     if debug: ipdb.set_trace()
     return M, attn_weights, torch.zeros((batch_size, 1))
