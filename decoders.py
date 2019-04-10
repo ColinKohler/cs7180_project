@@ -37,7 +37,7 @@ class Decoder(nn.Module):
 
     if (self.mt_norm == 1):
       #   Train Loss:0.52322 | Test Loss:0.50811 | Test Acc:0.757:
-      M = F.softmax(M/0.75, dim=1)
+      M = F.softmax(M/1, dim=1)
     elif (self.mt_norm == 2):
       #   Train Loss:0.44937 | Test Loss:0.49296 | Test Acc:0.753:
       M = F.softmax(M.view(batch_size,-1), dim=1).view(batch_size, self.M_dim[0], self.M_dim[1])

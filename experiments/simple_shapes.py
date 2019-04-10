@@ -43,14 +43,16 @@ def train(config):
     train_loss = 0
     for samples, queries, query_lens, labels in train_loader:
       batch_train_loss, std_dev, batch_std_dev, reg_loss = trainBatch(model, optimizer,
-                    criterion, samples, queries, query_lens, labels, debug=config.debug)
+                    criterion, samples, queries, query_lens, labels, debug=config.debug,
+                    target_sigma=config.target_sigma, reg_strength=config.reg_strength)
       train_loss += batch_train_loss
 
     # Test for a single epoch iterating over the minibatches
     test_loss, test_correct = 0, 0
     for i, (samples, queries, query_lens, labels) in enumerate(test_loader):
       _, batch_loss, batch_correct = testBatch(model, criterion, samples, queries,
-                                               query_lens, labels, debug=config.debug)
+                                               query_lens, labels, debug=config.debug,
+                                               target_sigma=config.target_sigma, reg_strength=config.reg_strength)
       test_loss += batch_loss
       test_correct += batch_correct
 
@@ -72,10 +74,11 @@ def train(config):
   pbar2.close()
 
   print("\n\n")
-  for i in range(2):
+  for i in range(10):
     print("Generating Computation Graph {}/5".format(i+1))
     samples, queries, query_lens, labels = test_loader.dataset[i:i+1]
-    output, loss, correct = testBatch(model, criterion, samples, queries, query_lens, labels, vis=True, i=i)
+    output, loss, correct = testBatch(model, criterion, samples, queries, query_lens, labels, vis=True, i=i,
+                                      target_sigma=config.target_sigma, reg_strength=config.reg_strength)
 
   model.saveModel('models/text.pt')
 
@@ -92,12 +95,12 @@ def MtRegularization(M_std, target_sigma = 0.5, divisor = 5000.0):
   M_t_regularization = torch.sum(M_std_transform)/divisor
   return M_t_regularization
 
-def getLoss(criterion, labels, output_tuple):
+def getLoss(criterion, labels, output_tuple, target_sigma=0.25, reg_strength=0.25):
   output, M_std, M_batch_std = output_tuple
   #print(criterion(output, labels.squeeze().long()),MtRegularization(M_std, target_sigma=0.4),MtRegularization(M_batch_std[:3], target_sigma=0.4 divisor=25))
-  return criterion(output, labels.squeeze(1).long()) +  0.25 * MtRegularization(M_std, target_sigma=0.4) + 0.25 *  MtRegularization(M_batch_std[:3], target_sigma=0.4, divisor=25)
+  return criterion(output, labels.squeeze(1).long()) +  reg_strength * MtRegularization(M_std, target_sigma=target_sigma) + reg_strength *  MtRegularization(M_batch_std[:3], target_sigma=target_sigma, divisor=25)
 
-def trainBatch(model, optimizer, criterion, samples, queries, query_lens, labels, clip=10, debug=False):
+def trainBatch(model, optimizer, criterion, samples, queries, query_lens, labels, clip=10, debug=False, target_sigma=0.25, reg_strength=0.25):
   model.train()
   # Transfer data to gpu/cpu and pass through model
   samples, queries, query_lens, labels = sortByQueryLen(samples, queries, query_lens, labels)
@@ -108,7 +111,7 @@ def trainBatch(model, optimizer, criterion, samples, queries, query_lens, labels
   # Compute loss & step optimzer
   optimizer.zero_grad()
   #print("var across_time",torch.mean(M_std).item(),"var acros batch",torch.mean(M_batch_std).item())
-  loss = getLoss(criterion, labels, (output, M_std, M_batch_std))
+  loss = getLoss(criterion, labels, (output, M_std, M_batch_std), target_sigma, reg_strength)
   loss.backward()
   nn.utils.clip_grad_norm_(model.parameters(), clip)
   optimizer.step()
@@ -116,7 +119,7 @@ def trainBatch(model, optimizer, criterion, samples, queries, query_lens, labels
 
   return loss.item(),torch.mean(M_std).item(),torch.mean(M_batch_std).item(),reg_loss
 
-def testBatch(model, criterion, samples, queries, query_lens, labels, debug=False, vis=False, i=0):
+def testBatch(model, criterion, samples, queries, query_lens, labels, debug=False, vis=False, i=0, target_sigma=0.25, reg_strength=0.25):
   model.eval()
   with torch.no_grad():
     # Transfer data to gpu/cpu and pass through model
@@ -125,7 +128,7 @@ def testBatch(model, criterion, samples, queries, query_lens, labels, debug=Fals
     output, M_std, M_batch_std = model(queries, query_lens, samples, vis=vis, debug=debug, i=i)
 
     # Compute loss & accuracy
-    loss = getLoss(criterion, labels, (output, M_std, M_batch_std)) 
+    loss = getLoss(criterion, labels, (output, M_std, M_batch_std), target_sigma, reg_strength) 
 
     pred = output.argmax(dim=1, keepdim=True)
     correct = pred.eq(labels.view_as(pred).round().long()).sum()
@@ -173,6 +176,10 @@ if __name__ == '__main__':
       help='maximum number of compositions (default = 5)')
   parser.add_argument('--comp_stop', type=int, default=0,
       help='method for selecting output timestep (0=last, 1=learned_weighted_avg (default))')
+  parser.add_argument('--reg_strength', type=float, default=0,
+      help='coefficient of added factor to loss inverse to M_t variance')
+  parser.add_argument('--target_sigma', type=float, default=0.4,
+      help='target M_t variance')
 
   args = parser.parse_args()
   if args.seed: torch.manual_seed(args.seed) # 9=good
