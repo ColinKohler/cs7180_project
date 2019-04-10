@@ -66,7 +66,7 @@ def train(config):
   # Close progress bar
   pbar.close()
 
-  for i in range(5):
+  for i in range(10):
     rand_idx = torch.randint(len(test_loader.dataset), (1,))
     samples, queries, query_lens, labels = test_loader.dataset[rand_idx]
     output, loss, correct = testBatch(model, criterion, samples, queries, query_lens, labels, vis=True, i=i)
@@ -97,12 +97,12 @@ def trainBatch(model, optimizer, criterion, samples, queries, query_lens, labels
   samples, queries, query_lens, labels = tensorToDevice(samples, queries, query_lens, labels)
   output, M_std, M_batch_std = model(queries, query_lens, samples, debug=debug)
 
-
   # Compute loss & step optimzer
   #ipdb.set_trace()
   optimizer.zero_grad()
   #print("var across_time",torch.mean(M_std).item(),"var acros batch",torch.mean(M_batch_std).item())
-  loss = getLoss(criterion, labels, (output, M_std, M_batch_std))
+  # loss = getLoss(criterion, labels, (output, M_std, M_batch_std))
+  loss = criterion(output, labels.squeeze().long())
   loss.backward()
   nn.utils.clip_grad_norm_(model.parameters(), clip)
   optimizer.step()
@@ -119,7 +119,8 @@ def testBatch(model, criterion, samples, queries, query_lens, labels, debug=Fals
 
     # Compute loss & accuracy
     if len(samples) > 1:
-      loss = getLoss(criterion, labels, (output, M_std, M_batch_std)).item()
+      # loss = getLoss(criterion, labels, (output, M_std, M_batch_std)).item()
+      loss = criterion(output, labels.squeeze().long()).item()
     else:
       loss= 0
 
@@ -171,7 +172,11 @@ if __name__ == '__main__':
       help='method for selecting output timestep (0=last, 1=learned_weighted_avg (default))')
 
   args = parser.parse_args()
-  if args.seed: torch.manual_seed(args.seed) # 9=good
+
+  if args.seed:
+    torch.manual_seed(args.seed)
+    np.seed(args.seed)
+
   if not args.test:
     train(args)
   elif args.test and args.load_model:

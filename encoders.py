@@ -4,6 +4,8 @@ import torch.nn.functional as F
 
 import ipdb
 
+import utils
+
 class QueryEncoder(nn.Module):
   def __init__(self, input_dim, embed_dim, hidden_dim, device, num_layers=1, max_query_len=7, dropout_prob=0.1):
     super(QueryEncoder, self).__init__()
@@ -38,7 +40,11 @@ class ContextEncoder(nn.Module):
 
     # Init two conv layers to extract features (64 kernels)
     self.conv1 = nn.Conv2d(3, 64, 10, stride=10)
-    self.conv2 = nn.Conv2d(64, 64, 1, stride=1)
+    self.conv2 = nn.Conv2d(64, 64, 3, stride=2)
+
+    # Use Xavier init
+    utils.xavierInit(self.conv1)
+    utils.xavierInit(self.conv2)
 
   def forward(self, context):
     return F.relu(self.conv2(F.relu(self.conv1(context))))

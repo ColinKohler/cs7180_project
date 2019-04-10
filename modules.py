@@ -4,6 +4,8 @@ import torch.nn.functional as F
 
 import ipdb
 
+import utils
+
 ###########################################################################################################################################
 #                                                         Logical Modules                                                                 #
 ###########################################################################################################################################
@@ -38,8 +40,6 @@ class Id(nn.Module):
     return F.relu(input)
 
 
-
-
 ###########################################################################################################################################
 #                                                         Complex Modules                                                                 #
 ###########################################################################################################################################
@@ -61,6 +61,11 @@ class Find(nn.Module):
     self.conv2 = nn.Conv2d(self.map_dim, 1, self.kernel_size)
     self.sigmoid = nn.Sigmoid()
 
+    # Use Xavier init
+    utils.xavierInit(self.fc1)
+    utils.xavierInit(self.conv1)
+    utils.xavierInit(self.conv2)
+
   def forward(self, context, text):
     batch_size = context.size(0)
     text_mapped = F.relu(self.fc1(text.view(batch_size, -1))).view(batch_size, self.map_dim, 1, 1)
@@ -76,7 +81,7 @@ class Relocate(nn.Module):
 
     self.context_dim = context_dim
     self.map_dim = map_dim
-    self.kernel_size = 3
+    self.kernel_size = context_dim[1]
     self.text_dim = text_dim
 
     # conv2(conv1(xvis) * W1*sum(a * xvis) * W2*xtxt)
@@ -84,6 +89,11 @@ class Relocate(nn.Module):
     self.conv1 = nn.Conv2d(1, self.map_dim, self.kernel_size)
     self.conv2 = nn.Conv2d(self.map_dim, 1, 1)
     self.sigmoid = nn.Sigmoid()
+
+    # Use Xavier init
+    utils.xavierInit(self.fc1)
+    utils.xavierInit(self.conv1)
+    utils.xavierInit(self.conv2)
 
   def forward(self, attention, text):
     batch_size = attention.shape[0]
@@ -119,14 +129,17 @@ class Exist(nn.Module):
     self.input_dim = input_dim
 
     # W * vec(a)
-    self.fc1 = nn.Linear(input_dim[-1]**2, 2)
-    # self.fc1 = nn.Linear(1, 2)
+    # self.fc1 = nn.Linear(input_dim[-1]**2, 2)
+    self.fc1 = nn.Linear(1, 2)
+
+    # Use Xavier init
+    utils.xavierInit(self.fc1)
 
   def forward(self, attention):
     batch_size = attention.size(0)
 
-    # attention = attention.reshape(batch_size, -1)
-    # max = torch.max(attention, dim=1)[0].view(batch_size, 1)
+    attention = attention.reshape(batch_size, -1)
+    max = torch.max(attention, dim=1)[0].view(batch_size, 1)
 
-    # return self.fc1(max)
-    return self.fc1(attention.reshape(batch_size, -1))
+    return self.fc1(max)
+    #  return self.fc1(attention.reshape(batch_size, -1))

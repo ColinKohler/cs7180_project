@@ -5,6 +5,8 @@ import torch.nn.functional as F
 import numpy as np
 import ipdb
 
+import utils
+
 class Decoder(nn.Module):
   def __init__(self, max_length, hidden_dim, M_dim, device, num_layers=1, mt_norm=1, dropout_prob=0.1):
     super(Decoder, self).__init__()
@@ -22,13 +24,10 @@ class Decoder(nn.Module):
     # self.composition_expand = nn.Linear(self.output_dim, self.hidden_dim)
     self.dropout = nn.Dropout(dropout_prob)
     self.lstm = nn.LSTM(self.output_dim, self.hidden_dim, num_layers=self.num_layers, batch_first=True, dropout=0.5)
-    self.decode_head = nn.Sequential(
-      nn.Linear(self.hidden_dim, self.output_dim),
-      # nn.ReLU(),
-      # nn.Linear(128, 32),
-      # nn.ReLU(),
-      # nn.Linear(32, self.output_dim)
-    )
+    self.decode_head = nn.Linear(self.hidden_dim, self.output_dim)
+
+    # Use Xavier init
+    utils.xavierInit(self.decode_head)
 
   def forward(self, prev_M, encoder_outputs, query_len, debug=False):
     batch_size = prev_M.size(0)
@@ -43,7 +42,7 @@ class Decoder(nn.Module):
     M = out.view(batch_size, self.M_dim)
 
     if (self.mt_norm == 1):
-      M = F.softmax(M/1.0, dim=1)
+      M = F.softmax(M, dim=1)
     elif (self.mt_norm == 2):
       M = F.softmax(M.view(batch_size,-1), dim=1).view(batch_size, self.M_dim)
     elif (self.mt_norm == 3):
@@ -67,6 +66,9 @@ class Attention(nn.Module):
 
     self.linear_out = nn.Linear(self.hidden_dim*2, self.hidden_dim)
     self.tanh = nn.Tanh()
+
+    # Use Xavier init
+    utils.xavierInit(self.linear_out)
 
   def forward(self, output, context, mask=None, temp=1.0):
     batch_size = output.size(0)
