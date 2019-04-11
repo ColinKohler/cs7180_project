@@ -81,10 +81,11 @@ class Relocate(nn.Module):
 
     self.context_dim = context_dim
     self.map_dim = map_dim
-    self.kernel_size = context_dim[1]
+    # self.kernel_size = context_dim[1]
+    self.kernel_size = 1
     self.text_dim = text_dim
 
-    # conv2(conv1(xvis) * W1*sum(a * xvis) * W2*xtxt)
+    # conv2(conv1(xvis), W*xtxt)
     self.fc1 = nn.Linear(self.text_dim, self.map_dim)
     self.conv1 = nn.Conv2d(1, self.map_dim, self.kernel_size)
     self.conv2 = nn.Conv2d(self.map_dim, 1, 1)
@@ -101,7 +102,6 @@ class Relocate(nn.Module):
     attention_mapped = F.relu(self.conv1(attention))
     eltwise_mult = F.normalize(text_mapped * attention_mapped, dim=1)
     return self.sigmoid(self.conv2(eltwise_mult))
-
 
 class Filter(nn.Module):
   def __init__(self, context_dim, map_dim=64, text_dim=1):
@@ -140,6 +140,8 @@ class Exist(nn.Module):
 
     attention = attention.reshape(batch_size, -1)
     max = torch.max(attention, dim=1)[0].view(batch_size, 1)
+    # min = torch.min(attention, dim=1)[0].view(batch_size, 1)
+    # mean = torch.mean(attention, dim=1).view(batch_size, 1)
 
     return self.fc1(max)
-    #  return self.fc1(attention.reshape(batch_size, -1))
+    # return self.fc1(attention.reshape(batch_size, -1))
