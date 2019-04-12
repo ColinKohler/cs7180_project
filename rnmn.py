@@ -23,7 +23,7 @@ class RNMN(nn.Module):
     self.lstm_hidden_dim = lstm_hidden_dim
     self.map_dim = map_dim
     self.text_dim = embed_dim
-    self.context_dim = [64, 3, 3]
+    self.context_dim = [64, 2, 2]
 
     self.comp_length = comp_length
     self.comp_stop_type = comp_stop_type
@@ -53,8 +53,6 @@ class RNMN(nn.Module):
     # Create visualizer
     self.visualizer = Visualizer(self.query_lang, self.attention_modules, self.answer_modules, self.comp_length)
 
-    self.output_combine = nn.Linear(self.M_dim, 1)
-
   def forward(self, query, query_len, context, debug=False, vis=False, i=0):
     batch_size = query.size(0)
 
@@ -62,8 +60,8 @@ class RNMN(nn.Module):
     self.query_encoder.resetHidden(batch_size)
     embedded_query, encoded_query, encoder_hidden = self.query_encoder(query, query_len)
     encoded_context = self.context_encoder(context)
-    self.decoder.hidden = ((encoder_hidden[0][0] + encoder_hidden[0][1]).view(self.num_layers, batch_size, self.lstm_hidden_dim),
-                           (encoder_hidden[1][0] + encoder_hidden[1][1]).view(self.num_layers, batch_size, self.lstm_hidden_dim))
+    self.decoder.hidden = ((encoder_hidden[0][:self.num_layers] + encoder_hidden[0][self.num_layers:]).view(self.num_layers, batch_size, self.lstm_hidden_dim),
+                           (encoder_hidden[1][:self.num_layers] + encoder_hidden[1][self.num_layers:]).view(self.num_layers, batch_size, self.lstm_hidden_dim))
 
     # Loop over timesteps using modules until a threshold is me00t
     a_t = torch.ones((batch_size, 1, self.context_dim[1], self.context_dim[2]), device=self.device)
@@ -78,8 +76,9 @@ class RNMN(nn.Module):
       if debug: ipdb.set_trace()
       M_t, attn, stop_bits = self.decoder(M_t.view(batch_size, 1, self.M_dim),
                                           attn.view(batch_size, 1, self.max_query_len),
+                                          a_t.view(batch_size, 1, self.context_dim[1]**2),
                                           encoded_query, query_len, debug=debug)
-      # M[t] = M_t
+      M[t] = M_t
       x_t = torch.bmm(attn, embedded_query)
       b_t, a_tp1, out = self.forward_1t(encoded_context, a_t, M_t, x_t, debug=debug)
 
@@ -100,8 +99,7 @@ class RNMN(nn.Module):
     if vis: self.visualizer.saveGraph(str(i))
     M_std = torch.var(M,dim=0)
     M_batch_std = torch.var(M,dim=1)
-    return F.log_softmax(out, dim=1), M_std, M_batch_std
-
+    return F.log_softmax(out, dim=1), M, M_std, M_batch_std
 
   def forward_1t(self, encoded_context, a_t, M_t, x_t, debug=False):
     batch_size = encoded_context.size(0)
@@ -119,7 +117,7 @@ class RNMN(nn.Module):
         raise ValueError('Invalid Module: {}'.format(type(module)))
 
     if debug: ipdb.set_trace()
-    a_tp1 = F.tanh(torch.einsum('bkij,bk->bij', b_t, M_t).unsqueeze(1))
+    a_tp1 = torch.einsum('bkij,bk->bij', b_t, M_t).unsqueeze(1)
     return b_t, a_tp1, out
 
   def saveModel(self, path):

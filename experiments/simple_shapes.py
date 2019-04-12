@@ -20,7 +20,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def train(config):
   if config.dataset == 'shapes':
-    query_lang, train_loader, test_loader, query_max_len = dataset_loader.createShapesDataLoader(batch_size=config.batch_size)
+    query_lang, train_loader, test_loader, query_max_len = dataset_loader.createShapesDataLoader('large', batch_size=config.batch_size)
   else:
     query_lang, train_loader, test_loader, query_max_len = dataset_loader.createScalableShapesDataLoader(config.dataset, batch_size=config.batch_size)
 
@@ -79,7 +79,7 @@ def train(config):
 def test(config):
   pass
 
-def MtRegularization(M_std, target_sigma = 0.5, divisor = 5000.0):
+def MtRegularization(M_std, target_sigma = 0.5, divisor = 256.0):
   M_std = torch.clamp(M_std,0,target_sigma)
   M_std_transform = torch.sigmoid((M_std - target_sigma)**2)
   M_t_regularization = torch.sum(M_std_transform)/divisor
@@ -88,14 +88,14 @@ def MtRegularization(M_std, target_sigma = 0.5, divisor = 5000.0):
 def getLoss(criterion, labels, output_tuple):
   output, M_std, M_batch_std = output_tuple
   #print(criterion(output, labels.squeeze().long()),MtRegularization(M_std, target_sigma=0.4),MtRegularization(M_batch_std[:3], target_sigma=0.4 divisor=25))
-  return criterion(output, labels.squeeze().long()) +  0.25 * MtRegularization(M_std, target_sigma=0.4) + 0.25 *  MtRegularization(M_batch_std[:3], target_sigma=0.4, divisor=25)
+  return criterion(output, labels.squeeze().long()) +  1.00 * MtRegularization(M_std, target_sigma=0.4) + 1.00 *  MtRegularization(M_batch_std[:3], target_sigma=0.4, divisor=25)
 
 def trainBatch(model, optimizer, criterion, samples, queries, query_lens, labels, clip=10, debug=False):
   model.train()
   # Transfer data to gpu/cpu and pass through model
   samples, queries, query_lens, labels = sortByQueryLen(samples, queries, query_lens, labels)
   samples, queries, query_lens, labels = tensorToDevice(samples, queries, query_lens, labels)
-  output, M_std, M_batch_std = model(queries, query_lens, samples, debug=debug)
+  output, M, M_std, M_batch_std = model(queries, query_lens, samples, debug=debug)
 
   # Compute loss & step optimzer
   #ipdb.set_trace()
@@ -103,6 +103,7 @@ def trainBatch(model, optimizer, criterion, samples, queries, query_lens, labels
   #print("var across_time",torch.mean(M_std).item(),"var acros batch",torch.mean(M_batch_std).item())
   # loss = getLoss(criterion, labels, (output, M_std, M_batch_std))
   loss = criterion(output, labels.squeeze().long())
+  loss += torch.sum(M[0,:,1] * 3.0) / samples.size(0)
   loss.backward()
   nn.utils.clip_grad_norm_(model.parameters(), clip)
   optimizer.step()
@@ -115,12 +116,13 @@ def testBatch(model, criterion, samples, queries, query_lens, labels, debug=Fals
     # Transfer data to gpu/cpu and pass through model
     samples, queries, query_lens, labels = sortByQueryLen(samples, queries, query_lens, labels)
     samples, queries, query_lens, labels = tensorToDevice(samples, queries, query_lens, labels)
-    output, M_std, M_batch_std = model(queries, query_lens, samples, vis=vis, debug=debug, i=i)
+    output, M, M_std, M_batch_std = model(queries, query_lens, samples, vis=vis, debug=debug, i=i)
 
     # Compute loss & accuracy
     if len(samples) > 1:
       # loss = getLoss(criterion, labels, (output, M_std, M_batch_std)).item()
       loss = criterion(output, labels.squeeze().long()).item()
+      loss += torch.sum(M[0,:,1] * 3.0) / samples.size(0)
     else:
       loss= 0
 

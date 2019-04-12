@@ -42,7 +42,7 @@ class Visualizer(object):
 
     # Add attn and text input nodes and edges
     self.G.add_node('x_{}'.format(step), labelloc='m',
-                    label='attn_{}: {}'.format(step, attn_t.cpu().numpy().squeeze().round(3)))# , step, x_t.cpu().numpy().squeeze()))
+                    label='words:{}\nattn_{}: {}'.format(self.query_lang.decodeQuery(query.cpu().squeeze()), step, attn_t.cpu().numpy().squeeze().round(3)))
     self.G.add_edge('x_{}'.format(step), 'b_{}'.format(step))
 
     # Add output node and edge

@@ -106,11 +106,11 @@ def createScalableShapesDataLoader(dataset, batch_size=64, rebalanced=True):
 
   return query_lang, train_loader, test_loader, max_len
 
-def createShapesDataLoader(batch_size=64):
+def createShapesDataLoader(dataset, batch_size=64):
   # Load labels, queries, and samples as numpy arrays
-  train_labels = np.genfromtxt(os.path.join(SHAPES_PATH, 'train.large.output'), delimiter='\n', dtype=np.bool).astype(np.float32).reshape(-1, 1)
-  train_queries = np.genfromtxt(os.path.join(SHAPES_PATH, 'train.large.query_str.txt'), delimiter='\n', dtype=np.str)
-  train_samples = np.load(os.path.join(SHAPES_PATH, 'train.large.input.npy')).astype(np.float32) / 255.0
+  train_labels = np.genfromtxt(os.path.join(SHAPES_PATH, 'train.{}.output'.format(dataset)), delimiter='\n', dtype=np.bool).astype(np.float32).reshape(-1, 1)
+  train_queries = np.genfromtxt(os.path.join(SHAPES_PATH, 'train.{}.query_str.txt'.format(dataset)), delimiter='\n', dtype=np.str)
+  train_samples = np.load(os.path.join(SHAPES_PATH, 'train.{}.input.npy'.format(dataset))).astype(np.float32) / 255.0
   train_samples = train_samples.transpose(0,3,1,2)
 
   test_labels = np.genfromtxt(os.path.join(SHAPES_PATH, 'test.output'), delimiter='\n', dtype=np.bool).astype(np.float32).reshape(-1,1)

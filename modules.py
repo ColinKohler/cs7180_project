@@ -129,8 +129,8 @@ class Exist(nn.Module):
     self.input_dim = input_dim
 
     # W * vec(a)
-    # self.fc1 = nn.Linear(input_dim[-1]**2, 2)
-    self.fc1 = nn.Linear(1, 2)
+    self.fc1 = nn.Linear(input_dim[-1]**2, 2)
+    # self.fc1 = nn.Linear(1, 2)
 
     # Use Xavier init
     utils.xavierInit(self.fc1)
@@ -143,5 +143,5 @@ class Exist(nn.Module):
     # min = torch.min(attention, dim=1)[0].view(batch_size, 1)
     # mean = torch.mean(attention, dim=1).view(batch_size, 1)
 
-    return self.fc1(max)
-    # return self.fc1(attention.reshape(batch_size, -1))
+    # return self.fc1(max)
+    return self.fc1(attention.reshape(batch_size, -1))
