@@ -107,6 +107,9 @@ class Exist(nn.Module):
 
     # W * vec(a)
     self.fc1 = nn.Linear(input_dim[-1]**2, 2)
+    with torch.no_grad():
+      self.fc1.weight += 0.0
+      self.fc1.bias += 0.0
 
   def forward(self, attention):
     batch_size = attention.size(0)

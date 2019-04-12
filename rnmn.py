@@ -23,7 +23,9 @@ class RNMN(nn.Module):
     self.lstm_hidden_dim = lstm_hidden_dim
     self.map_dim = map_dim
     self.text_dim = 1
-    self.context_dim = [64, 4, 4]
+    
+    #self.context_dim = [64, 6, 6s]
+    self.context_dim = [64, 2, 2]
 
     self.comp_length = comp_length
     self.comp_stop_type = comp_stop_type
@@ -35,7 +37,8 @@ class RNMN(nn.Module):
     self.relocate = Relocate(self.context_dim, map_dim=self.map_dim, text_dim=self.text_dim)
     self.exist = Exist(self.context_dim)
 
-    self.attention_modules = [And(), self.find]# , self.relocate]
+    #self.attention_modules = [And(), self.find , self.relocate, Id(), Or()]
+    self.attention_modules = [And(), self.find ]
     self.num_att_modules = len(self.attention_modules)
     self.answer_modules = [self.exist]
     [module.to(self.device) for module in self.attention_modules + self.answer_modules]
@@ -126,6 +129,7 @@ class RNMN(nn.Module):
 
     if debug: ipdb.set_trace()
     a_tp1 = torch.einsum('bkij,bkl->blij', b_t, M_t)
+    #a_tp2 = torch.sigmoid(a_tp1)
     return b_t, a_tp1, out
 
   def saveModel(self, save_path):
