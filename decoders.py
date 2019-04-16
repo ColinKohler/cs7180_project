@@ -51,6 +51,11 @@ class Decoder(nn.Module):
       tots = torch.clamp(torch.cumsum(M,dim=1)[:,-1],min=1).unsqueeze(1)
       M = (M / tots).view(batch_size, self.M_dim)
 
+
+    if self.training:
+      M = M + torch.normal(torch.ones(M.shape)*0,torch.ones(M.shape)*0.1).to(self.device) #toggle
+
+
     if debug: ipdb.set_trace()
     return M, attn_weights, torch.zeros((batch_size, 1))
 
