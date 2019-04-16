@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import ipdb
 
 from visualizer import Visualizer
-from modules import And, Or, Id, Find, Filter, Relocate, Exist
+from modules import And, Or, Id, Find, Filter, Relocate, Exist, Count
 from encoders import QueryEncoder, ContextEncoder
 from decoders import Decoder
 
@@ -23,7 +23,7 @@ class RNMN(nn.Module):
     self.lstm_hidden_dim = lstm_hidden_dim
     self.map_dim = map_dim
     self.text_dim = embed_dim
-    self.context_dim = [64, 2, 2]
+    self.context_dim = [32, 2, 2]
 
     self.comp_length = comp_length
     self.comp_stop_type = comp_stop_type
@@ -31,13 +31,16 @@ class RNMN(nn.Module):
     self.max_query_len = query_lang.max_len
 
     # Create attention and answer modules
+    self.num_output = 5
     self.filter = Filter(self.context_dim, map_dim=self.map_dim, text_dim=self.text_dim)
     self.relocate = Relocate(self.context_dim, map_dim=self.map_dim, text_dim=self.text_dim)
-    self.exist = Exist(self.context_dim)
+    self.exist = Exist(self.context_dim, self.num_output)
+    self.count = Count(self.context_dim, self.num_output)
 
-    self.attention_modules = [self.filter, self.relocate]
+    self.attention_modules = [self.filter]# , self.relocate]
     self.num_att_modules = len(self.attention_modules)
-    self.answer_modules = [self.exist]
+    self.answer_modules = [self.exist, self.count]
+    self.num_answer_modules = len(self.answer_modules)
     [module.to(self.device) for module in self.attention_modules + self.answer_modules]
 
     # Create query and context encoders
@@ -46,7 +49,7 @@ class RNMN(nn.Module):
     self.context_encoder = ContextEncoder()
 
     # Create decoder
-    self.M_dim = self.num_att_modules
+    self.M_dim = self.num_answer_modules
     self.decoder = Decoder(self.max_query_len, self.lstm_hidden_dim, self.M_dim,
                            self.device, num_layers=self.num_layers, mt_norm=mt_norm)
 
@@ -64,13 +67,13 @@ class RNMN(nn.Module):
                            (encoder_hidden[1][:self.num_layers] + encoder_hidden[1][self.num_layers:]).view(self.num_layers, batch_size, self.lstm_hidden_dim))
 
     # Loop over timesteps using modules until a threshold is me00t
-    a_t = torch.ones((batch_size, 1, self.context_dim[1], self.context_dim[2]), device=self.device)
+    a_t = torch.ones((batch_size, 1, self.context_dim[1], self.context_dim[2]), device=self.device) * 1.
     M_t = torch.zeros((batch_size, self.M_dim), device=self.device)
     attn = torch.zeros((batch_size, self.max_query_len), device=self.device)
     M = torch.zeros((self.comp_length, batch_size, self.M_dim), device=self.device)
 
-    stop_mask = torch.zeros((batch_size, self.comp_length), device=self.device)
-    outs = torch.zeros((batch_size, self.comp_length, 2), device=self.device)
+    # stop_mask = torch.zeros((batch_size, self.comp_length), device=self.device)
+    # outs = torch.zeros((batch_size, self.comp_length, 2), device=self.device)
 
     for t in range(self.comp_length):
       if debug: ipdb.set_trace()
@@ -78,22 +81,22 @@ class RNMN(nn.Module):
                                           attn.view(batch_size, 1, self.max_query_len),
                                           a_t.view(batch_size, 1, self.context_dim[1]**2),
                                           encoded_query, query_len, debug=debug)
-      M[t] = M_t
+      # M[t] = M_t
       x_t = torch.bmm(attn, embedded_query)
-      b_t, a_tp1, out = self.forward_1t(encoded_context, a_t, M_t, x_t, debug=debug)
+      b_t, a_tp1, out = self.forward_1t(t, encoded_context, a_t, M_t, x_t, debug=debug)
 
       if vis:
         self.visualizer.visualizeTimestep(t, context, query, attn, x_t, a_t, M_t, b_t, out)
 
-      if (self.comp_stop_type == 1):
-        stop_mask[:,t] = stop_bits.squeeze(1)
-        outs[:,t,:] = out
+      # if (self.comp_stop_type == 1):
+      #   stop_mask[:,t] = stop_bits.squeeze(1)
+      #   outs[:,t,:] = out
 
       a_t = a_tp1
 
-    if (self.comp_stop_type == 1):
-      stop_mask = F.softmax(stop_mask, dim=1)
-      out = torch.einsum('bt,bti->bi', stop_mask, outs)
+    # if (self.comp_stop_type == 1):
+    #   stop_mask = F.softmax(stop_mask, dim=1)
+    #   out = torch.einsum('bt,bti->bi', stop_mask, outs)
 
     if debug: ipdb.set_trace()
     if vis: self.visualizer.saveGraph(str(i))
@@ -101,24 +104,30 @@ class RNMN(nn.Module):
     M_batch_std = torch.var(M,dim=1)
     return F.log_softmax(out, dim=1), M, M_std, M_batch_std
 
-  def forward_1t(self, encoded_context, a_t, M_t, x_t, debug=False):
+  def forward_1t(self, t, encoded_context, a_t, M_t, x_t, debug=False):
     batch_size = encoded_context.size(0)
     b_t = torch.zeros((batch_size, self.num_att_modules, self.context_dim[1], self.context_dim[2]), device=self.device)
+    out = torch.zeros((batch_size, self.num_answer_modules, self.num_output), device=self.device)
 
     # Run all attention modules saving output
     for i, module in enumerate(self.attention_modules + self.answer_modules):
       if type(module) is Filter:
+      #   if t == 0:
+      #     b_t[:,i] = module.Find.forward(encoded_context, x_t).squeeze(1)
+      #   else:
         b_t[:,i] = module.forward(a_t, encoded_context, x_t).squeeze(1)
       elif type(module) is Relocate:
         b_t[:,i] = module.forward(a_t, x_t).squeeze(1)
       elif type(module) is Exist:
-        out = module.forward(a_t)
+        out[:,0] = module.forward(a_t)
+      elif type(module) is Count:
+        out[:,1] = module.forward(a_t)
       else:
         raise ValueError('Invalid Module: {}'.format(type(module)))
 
     if debug: ipdb.set_trace()
-    a_tp1 = torch.einsum('bkij,bk->bij', b_t, M_t).unsqueeze(1)
-    return b_t, a_tp1, out
+    out = torch.einsum('bki,bk->bi', out, M_t)
+    return b_t, b_t, out
 
   def saveModel(self, path):
     torch.save(self.state_dict(), path)

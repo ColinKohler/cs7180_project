@@ -78,14 +78,14 @@ class Visualizer(object):
     num_attention = a.size(1)
     path = 'vis_tmp/{}_attention_{}.png'.format(attn_type, step)
 
-    if attn_type == 'input':
-      plt.figure()
-      plt.imshow(a[0,0].cpu(), cmap='gray', vmin=0.0, vmax=1.0)
-    else:
-      fig, ax = plt.subplots(nrows=1, ncols=num_attention, figsize=(8, 4))
-      for i, axi in enumerate(ax.flat):
-        axi.set_title(self.module_output_names[i])
-        axi.imshow(a[0,i].cpu(), cmap='gray', vmin=0.0, vmax=1.0)
+    # if attn_type == 'input':
+    plt.figure()
+    plt.imshow(a[0,0].cpu(), cmap='gray', vmin=0.0, vmax=1.0)
+    # else:
+    #   fig, ax = plt.subplots(nrows=1, ncols=num_attention, figsize=(8, 4))
+    #   for i, axi in enumerate(ax.flat):
+    #     axi.set_title(self.module_output_names[i])
+    #     axi.imshow(a[0,i].cpu(), cmap='gray', vmin=0.0, vmax=1.0)
 
     # Save the figure to a temp file
     plt.tight_layout(True)

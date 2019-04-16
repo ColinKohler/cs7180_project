@@ -78,7 +78,7 @@ def createScalableShapesDataLoader(dataset, batch_size=64, rebalanced=True):
   # Split the data into a train/test datasets
   dataset_length = labels.shape[0]
   indices = npr.permutation(dataset_length)
-  train_idx, test_idx = indices[:int(dataset_length*.8)], indices[int(dataset_length*.8):]
+  train_idx, test_idx = indices[:int(dataset_length*.95)], indices[int(dataset_length*.95):]
 
   train_labels, train_samples = labels[train_idx],  samples[train_idx]
   train_queries, train_query_lens = queries[train_idx], query_lens[train_idx]

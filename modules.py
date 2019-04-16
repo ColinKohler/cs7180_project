@@ -68,10 +68,10 @@ class Find(nn.Module):
 
   def forward(self, context, text):
     batch_size = context.size(0)
-    text_mapped = F.relu(self.fc1(text.view(batch_size, -1))).view(batch_size, self.map_dim, 1, 1)
-    context_mapped = F.relu(self.conv1(context))
+    text_mapped = self.fc1(text.view(batch_size, -1)).view(batch_size, self.map_dim, 1, 1)
+    context_mapped = self.conv1(context)
     eltwise_mult = F.normalize(text_mapped * context_mapped, dim=1)
-    return self.sigmoid(self.conv2(eltwise_mult))
+    return self.conv2(eltwise_mult)
 
 class Relocate(nn.Module):
   def __init__(self, context_dim, map_dim=64, text_dim=1):
@@ -98,10 +98,10 @@ class Relocate(nn.Module):
 
   def forward(self, attention, text):
     batch_size = attention.shape[0]
-    text_mapped = F.relu(self.fc1(text.view(batch_size, -1)).view(batch_size, self.map_dim, 1, 1))
-    attention_mapped = F.relu(self.conv1(attention))
+    text_mapped = self.fc1(text.view(batch_size, -1).view(batch_size, self.map_dim, 1, 1))
+    attention_mapped = self.conv1(attention)
     eltwise_mult = F.normalize(text_mapped * attention_mapped, dim=1)
-    return self.sigmoid(self.conv2(eltwise_mult))
+    return self.conv2(eltwise_mult)
 
 class Filter(nn.Module):
   def __init__(self, context_dim, map_dim=64, text_dim=1):
@@ -121,16 +121,16 @@ class Filter(nn.Module):
 ###########################################################################################################################################
 
 class Exist(nn.Module):
-  def __init__(self, input_dim):
+  def __init__(self, input_dim, output_dim):
     super(Exist, self).__init__()
     self.num_attention_maps = 1
     self.name = 'Exist'
 
     self.input_dim = input_dim
+    self.output_dim = output_dim
 
     # W * vec(a)
-    self.fc1 = nn.Linear(input_dim[-1]**2, 2)
-    # self.fc1 = nn.Linear(1, 2)
+    self.fc1 = nn.Linear(3, self.output_dim)
 
     # Use Xavier init
     utils.xavierInit(self.fc1)
@@ -139,9 +139,32 @@ class Exist(nn.Module):
     batch_size = attention.size(0)
 
     attention = attention.reshape(batch_size, -1)
-    max = torch.max(attention, dim=1)[0].view(batch_size, 1)
-    # min = torch.min(attention, dim=1)[0].view(batch_size, 1)
-    # mean = torch.mean(attention, dim=1).view(batch_size, 1)
+    att_max = torch.max(attention, dim=1)[0].view(batch_size, 1)
+    att_min = torch.min(attention, dim=1)[0].view(batch_size, 1)
+    att_mean = torch.mean(attention, dim=1).view(batch_size, 1)
 
-    # return self.fc1(max)
-    return self.fc1(attention.reshape(batch_size, -1))
+    return self.fc1(torch.cat((att_min, att_mean, att_max), dim=1))
+
+class Count(nn.Module):
+  def __init__(self, input_dim, output_dim):
+    super(Count, self).__init__()
+    self.num_attention_maps = 1
+    self.name = 'Exist'
+
+    self.input_dim = input_dim
+    self.output_dim = output_dim
+
+    # W * vec(a)
+    self.fc1 = nn.Linear(input_dim[-1]**2+2, self.output_dim)
+
+    # Use Xavier init
+    utils.xavierInit(self.fc1)
+
+  def forward(self, attention):
+    batch_size = attention.size(0)
+
+    attention = attention.reshape(batch_size, -1)
+    att_max = torch.max(attention, dim=1)[0].view(batch_size, 1)
+    att_min = torch.min(attention, dim=1)[0].view(batch_size, 1)
+
+    return self.fc1(torch.cat((attention, att_min, att_max), dim=1))

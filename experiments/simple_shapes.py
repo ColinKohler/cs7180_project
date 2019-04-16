@@ -53,14 +53,16 @@ def train(config):
       test_loss += batch_loss
       test_correct += batch_correct
 
+    model.decoder.annealTemp(epoch)
+
     # Bookkeeping
     train_losses.append(train_loss / (len(train_loader.dataset) / config.batch_size))
     test_losses.append(test_loss / (len(test_loader.dataset) / config.batch_size))
     test_accs.append(test_correct / len(test_loader.dataset))
 
     # Update progress bar
-    pbar.set_description('Train Loss:{:.5f} | Test Loss:{:.5f} | Test Acc:{:.3f}'.format(
-      train_losses[-1], test_losses[-1], test_accs[-1]))
+    pbar.set_description('Train Loss:{:.5f} | Test Loss:{:.5f} | Test Acc:{:.3f} | {:.3f}'.format(
+      train_losses[-1], test_losses[-1], test_accs[-1], model.decoder.temp))
     pbar.update(1)
 
   # Close progress bar
@@ -103,7 +105,6 @@ def trainBatch(model, optimizer, criterion, samples, queries, query_lens, labels
   #print("var across_time",torch.mean(M_std).item(),"var acros batch",torch.mean(M_batch_std).item())
   # loss = getLoss(criterion, labels, (output, M_std, M_batch_std))
   loss = criterion(output, labels.squeeze().long())
-  loss += torch.sum(M[0,:,1] * 3.0) / samples.size(0)
   loss.backward()
   nn.utils.clip_grad_norm_(model.parameters(), clip)
   optimizer.step()
@@ -122,7 +123,6 @@ def testBatch(model, criterion, samples, queries, query_lens, labels, debug=Fals
     if len(samples) > 1:
       # loss = getLoss(criterion, labels, (output, M_std, M_batch_std)).item()
       loss = criterion(output, labels.squeeze().long()).item()
-      loss += torch.sum(M[0,:,1] * 3.0) / samples.size(0)
     else:
       loss= 0
 
@@ -177,7 +177,7 @@ if __name__ == '__main__':
 
   if args.seed:
     torch.manual_seed(args.seed)
-    np.seed(args.seed)
+    npr.seed(args.seed)
 
   if not args.test:
     train(args)
