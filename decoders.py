@@ -39,11 +39,11 @@ class Decoder(nn.Module):
     out, self.hidden = self.lstm(out, self.hidden)
 
     out = self.decode_head(out.view(batch_size, -1))
-    M = out.view(batch_size, self.M_dim)
+    M = out.view(batch_size, self.M_dim )
 
     if (self.mt_norm == 1):
-      M = F.softmax(M, dim=1)
-      # M = F.sigmoid(M)
+      #M = F.softmax(M, dim=1)  #toggle!?
+      M = torch.sigmoid(M)  
     elif (self.mt_norm == 2):
       M = F.softmax(M.view(batch_size,-1), dim=1).view(batch_size, self.M_dim)
     elif (self.mt_norm == 3):

@@ -23,7 +23,7 @@ class RNMN(nn.Module):
     self.lstm_hidden_dim = lstm_hidden_dim
     self.map_dim = map_dim
     self.text_dim = embed_dim
-    self.context_dim = [64, 3, 3]
+    self.context_dim = [64, 6, 6]
 
     self.comp_length = comp_length
     self.comp_stop_type = comp_stop_type
@@ -46,7 +46,7 @@ class RNMN(nn.Module):
     self.context_encoder = ContextEncoder()
 
     # Create decoder
-    self.M_dim = self.num_att_modules
+    self.M_dim = self.num_att_modules * 6 * 6
     self.decoder = Decoder(self.max_query_len, self.lstm_hidden_dim, self.M_dim,
                            self.device, num_layers=self.num_layers, mt_norm=mt_norm)
 
@@ -119,7 +119,8 @@ class RNMN(nn.Module):
         raise ValueError('Invalid Module: {}'.format(type(module)))
 
     if debug: ipdb.set_trace()
-    a_tp1 = F.tanh(torch.einsum('bkij,bk->bij', b_t, M_t).unsqueeze(1))
+    M_t_shaped = M_t.view(batch_size, self.num_att_modules, 6 ,6) 
+    a_tp1 = torch.tanh(torch.einsum('bkij,bkij->bij', b_t, M_t_shaped)).unsqueeze(1)
     return b_t, a_tp1, out
 
   def saveModel(self, path):
